@@ -145,14 +145,14 @@ describe("Littercoin Smart Contract", function () {
         expect(rewardBalance).to.equal(2000);
     });
 
-    // it("should revert redeeming Littercoin if contract has insufficient ETH", async function () {
-    //     // Mint Merchant Token to user1
-    //     await merchantToken.connect(owner).mint(user1.address);
-    //
-    //     // Mint Littercoin for user1
-    //     await littercoin.connect(user1).mint(500);
-    //
-    //     // Attempt to redeem Littercoin without sufficient ETH, expecting a revert
-    //     await expect(littercoin.connect(user1).redeemLittercoin(500)).to.be.revertedWith("Not enough ETH in contract");
-    // });
+    it("should revert redeeming Littercoin if contract has insufficient ETH", async function () {
+        // Mint Merchant Token to user1
+        await merchantToken.connect(owner).mint(user1.address);
+
+        // Mint Littercoin for user1
+        await littercoin.connect(user1).mint(500);
+
+        // Attempt to redeem Littercoin without sufficient ETH, expecting a revert
+        await expect(littercoin.connect(user1).redeemLittercoin(500)).to.be.revertedWith("Not enough ETH in contract");
+    });
 });

@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/sean/solidity/littercoin/contracts/Littercoin.sol": {
-      "lastModificationDate": 1730373374955,
-      "contentHash": "37d766bb806aff7cda981b8202a9c2e4",
+      "lastModificationDate": 1730382768303,
+      "contentHash": "4a98d12a0a3f38c9b983cf31a484b651",
       "sourceName": "contracts/Littercoin.sol",
       "solcConfig": {
         "version": "0.8.27",
@@ -37,7 +37,8 @@
         "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol",
         "./MerchantToken.sol",
         "./OLMRewardToken.sol",
-        "hardhat/console.sol"
+        "hardhat/console.sol",
+        "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol"
       ],
       "versionPragmas": [
         "^0.8.0"
@@ -837,6 +838,81 @@
       ],
       "artifacts": [
         "console"
+      ]
+    },
+    "/Users/sean/solidity/littercoin/node_modules/@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol": {
+      "lastModificationDate": 1730375457818,
+      "contentHash": "64a3f906dc7696aa3c9fa8454b673be7",
+      "sourceName": "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol",
+      "solcConfig": {
+        "version": "0.8.27",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "AggregatorV3Interface"
+      ]
+    },
+    "/Users/sean/solidity/littercoin/contracts/MockV3Aggregator.sol": {
+      "lastModificationDate": 1730378086934,
+      "contentHash": "43267fd9035cdba50e62fce2c900ddd1",
+      "sourceName": "contracts/MockV3Aggregator.sol",
+      "solcConfig": {
+        "version": "0.8.27",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol",
+        "@openzeppelin/contracts/access/Ownable.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "MockV3Aggregator"
       ]
     }
   }

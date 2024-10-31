@@ -13,6 +13,7 @@ import { MerchantToken } from "./MerchantToken.sol";
 import { OLMRewardToken } from "./OLMRewardToken.sol";
 
 import "hardhat/console.sol";
+import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 contract Littercoin is ERC20, Ownable, ReentrancyGuard {
     // Mapping to track the total amount minted by each user
@@ -24,8 +25,11 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
     // Merchant Token
     MerchantToken public merchantToken;
 
+    // Chainlink Price Feed
+    AggregatorV3Interface internal priceFeed;
+
     /// @notice Contract constructor
-    constructor() ERC20("Littercoin", "LITTERX") {
+    constructor (address _priceFeed) ERC20("Littercoin", "LITTERX") {
         // Deploy the Reward Token and transfer ownership to this contract
         rewardToken = new OLMRewardToken();
         rewardToken.transferOwnership(address(this));
@@ -33,6 +37,9 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
         // Deploy the Merchant Token
         merchantToken = new MerchantToken();
         merchantToken.transferOwnership(msg.sender);
+
+        // Set up Chainlink Price Feed (ETH/USD on mainnet)
+        priceFeed = AggregatorV3Interface(_priceFeed);
     }
 
     /// @notice Getter function for rewardToken address
@@ -94,10 +101,23 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
 
     /// @notice Accepts ETH and rewards OLM Reward Tokens based on the amount
     receive () external payable {
-        uint256 ethAmount = msg.value; // Amount of ETH sent
+        uint256 ethAmount = msg.value;
 
-        // For every 1 ETH sent, user gets 100 OLM Reward Tokens
-        uint256 rewardAmount = ethAmount * 100;
+        // Get the latest ETH/USD price
+        (, int256 price, , , ) = priceFeed.latestRoundData();
+        require(price > 0, "Invalid price from Chainlink");
+
+        // Convert price to uint256 and get reward amount
+        // assume $2000 for testing
+        // Assuming the price feed has 8 decimals
+        // Convert price to uint256 and get ethPriceUsd (the price of 1 ETH in USD)
+        uint256 ethPriceUsd = uint256(price); // The price from Chainlink has 8 decimals
+
+        // Calculate the number of reward tokens to mint
+        // ethPriceUsd has 8 decimals, so divide by 10^8 to get the actual USD value
+        // ethAmount is in wei (10^18), so divide by 10^18 to convert to ETH
+        // rewardAmount = ethAmount (in USD) * (1 OLMRewardToken / 1 USD)
+        uint256 rewardAmount = (ethAmount * ethPriceUsd) / 1e26;
 
         // Mint OLM Reward Tokens to the sender
         rewardToken.mint(msg.sender, rewardAmount);

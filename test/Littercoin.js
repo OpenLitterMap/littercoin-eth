@@ -93,6 +93,10 @@ describe("Littercoin Smart Contract", function () {
         // Check user2's Eth balance after redemption
         const userEthBalance = await ethers.provider.getBalance(user2.address);
         expect(userEthBalance).to.not.equal(0); // 9999999916567839982327
+
+        // User2 should still have the Merchant Token
+        const user2MerchantTokenBalance = await merchantToken.balanceOf(user2.address);
+        expect(user2MerchantTokenBalance).to.equal(1);
     });
 
     it("should revert redeeming Littercoin if user does not have a Merchant Token", async function () {
@@ -106,13 +110,13 @@ describe("Littercoin Smart Contract", function () {
     it("should reward OLMRewardToken correctly upon receiving ETH", async function () {
         // Send 1 ETH from user1 to the Littercoin contract
         await user1.sendTransaction({
-            to: littercoin.address,
+            to: littercoin.getAddress(),
             value: ethers.parseEther("1"),
         });
 
         // Check user1's OLMRewardToken balance (should be 100 OLMRT)
         const rewardBalance = await rewardToken.balanceOf(user1.address);
-        expect(rewardBalance).to.equal(ethers.utils.parseEther("100"));
+        expect(rewardBalance).to.equal(ethers.parseEther("100"));
     });
 
     it("should revert redeeming Littercoin if contract has insufficient ETH", async function () {

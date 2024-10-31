@@ -36,18 +36,20 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
     }
 
     /// @notice Getter function for rewardToken address
+    /// @notice - only needed for testing
     function getRewardTokenAddress() external view returns (address) {
         return address(rewardToken);
     }
 
     /// @notice Getter function for merchantToken address
+    /// @notice - only needed for testing
     function getMerchantTokenAddress() external view returns (address) {
         return address(merchantToken);
     }
 
     /// @notice Users can mint Littercoin tokens
     /// @param amount The amount of tokens to mint
-    function mint(uint256 amount) external {
+    function mint (uint256 amount) external {
         require(amount > 0, "Amount must be greater than zero");
 
         // To do - enable backend authorisation
@@ -67,13 +69,13 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
     /// @notice Checks if a user holds a Merchant Token
     /// @param user The address of the user
     /// @return True if the user holds a Merchant Token, false otherwise
-    function hasMerchantToken(address user) public view returns (bool) {
+    function hasMerchantToken (address user) public view returns (bool) {
         return merchantToken.balanceOf(user) > 0;
     }
 
     /// @notice Allows users with a Merchant Token to redeem Littercoin for ETH
     /// @param amount The amount of Littercoin to redeem
-    function redeemLittercoin(uint256 amount) external nonReentrant {
+    function redeemLittercoin (uint256 amount) external nonReentrant {
         require(hasMerchantToken(msg.sender), "Must hold a Merchant Token");
         require(balanceOf(msg.sender) >= amount, "Insufficient Littercoin balance");
         require(address(this).balance >= amount, "Not enough ETH in contract");
@@ -88,10 +90,10 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
     }
 
     /// @notice Event emitted when a user redeems Littercoin for ETH
-    event Redeem(address indexed user, uint256 littercoinAmount, uint256 ethAmount);
+    event Redeem (address indexed user, uint256 littercoinAmount, uint256 ethAmount);
 
     /// @notice Accepts ETH and rewards OLM Reward Tokens based on the amount
-    receive() external payable {
+    receive () external payable {
         uint256 ethAmount = msg.value; // Amount of ETH sent
 
         // For every 1 ETH sent, user gets 100 OLM Reward Tokens
@@ -104,5 +106,5 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
     }
 
     /// @notice Event emitted when a user is rewarded OLM Reward Tokens
-    event Reward(address indexed user, uint256 rewardAmount);
+    event Reward (address indexed user, uint256 rewardAmount);
 }

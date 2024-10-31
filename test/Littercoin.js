@@ -3,14 +3,14 @@ const { ethers } = require("hardhat");
 
 describe("Littercoin Smart Contract", function () {
     let littercoin, rewardToken, merchantToken;
-    let owner, user1, user2;
+    let owner, user1, user2, user3;
 
     beforeEach(async function () {
         // Get the contract factories
         const Littercoin = await ethers.getContractFactory("Littercoin");
 
         // Create Users
-        [owner, user1, user2] = await ethers.getSigners();
+        [owner, user1, user2, user3] = await ethers.getSigners();
 
         // Initialise the contracts
         littercoin = await Littercoin.deploy();
@@ -53,8 +53,7 @@ describe("Littercoin Smart Contract", function () {
 
     // Merchant Token Holder can send Littercoin to the Smart Contract and get Eth out
     it("should allow only users with Merchant Token to redeem Littercoin", async function () {
-
-        // // user1 sends 1 ETH to the Littercoin contract
+        // user1 sends 1 ETH to the Littercoin contract
         await user1.sendTransaction({
             to: littercoin.getAddress(),
             value: ethers.parseEther("1"),
@@ -64,28 +63,36 @@ describe("Littercoin Smart Contract", function () {
         const contractBalance = await ethers.provider.getBalance(littercoin.getAddress());
         expect(contractBalance).to.equal(ethers.parseEther("1"));
 
-        // Give Merchant Token to user2
+        // Mint Merchant Token for user2
         await merchantToken.connect(owner).mint(user2.address);
         const user2Balance = await merchantToken.balanceOf(user2.address);
         expect(user2Balance).to.equal(1);
 
-        // // Mint Littercoin for user1
-        // await littercoin.connect(user1).mint(1);
-        //
-        // // User1 sends the Littercoin to user2
-        // await littercoin.connect(user1).transfer(user2.address, 1);
-        //
-        // // Merchant Token Holder (user2) sends the Littercoin to the Smart Contract
-        // await littercoin.connect(user2).redeemLittercoin(1);
-        //
-        // // Check user1's Littercoin balance after redemption
-        // const userBalance = await littercoin.balanceOf(user2.address);
-        // expect(userBalance).to.equal(0);
-        //
-        // // Check user1's Eth balance after redemption
-        // const userEthBalance = await ethers.provider.getBalance(user2.address);
-        // console.log('--- userEthBalance ---', userEthBalance.toString());
-        // expect(userEthBalance).to.not.equal(0);
+        // Mint Littercoin for user3
+        await littercoin.connect(user3).mint(1);
+        const user3Balance = await littercoin.balanceOf(user3.address);
+        expect(user3Balance).to.equal(1);
+
+        // User3 sends the Littercoin to the Merchant Token Holder (user2)
+        await littercoin.connect(user3).transfer(user2.address, 1);
+        const user3BalanceZero = await littercoin.balanceOf(user3.address);
+        expect(user3BalanceZero).to.equal(0);
+
+        const user2LittercoinBalance = await littercoin.balanceOf(user2.address);
+        expect(user2LittercoinBalance).to.equal(1);
+
+        // Merchant Token Holder (user2) sends the Littercoin to the Smart Contract
+        // They should receive 1 ETH in return
+        // and have 0 littercoin
+        await littercoin.connect(user2).redeemLittercoin(1);
+
+        // Check user2 Littercoin balance after redemption
+        const user2LittercoinBalance_a = await littercoin.balanceOf(user2.address);
+        expect(user2LittercoinBalance_a).to.equal(0);
+
+        // Check user2's Eth balance after redemption
+        const userEthBalance = await ethers.provider.getBalance(user2.address);
+        expect(userEthBalance).to.not.equal(0); // 9999999916567839982327
     });
 
     it("should revert redeeming Littercoin if user does not have a Merchant Token", async function () {

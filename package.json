@@ -1,0 +1,19 @@
+{
+  "name": "Littercoin Smart Contract",
+  "version": "3.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "hardhat test"
+  },
+  "author": "Seán Lynch",
+  "license": "MIT",
+  "description": "",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.13"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.2",
+    "chai": "^4.5.0"
+  }
+}

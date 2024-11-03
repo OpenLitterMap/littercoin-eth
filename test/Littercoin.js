@@ -8,8 +8,6 @@ async function main() {
     const MockV3Aggregator = await ethers.getContractFactory("MockV3Aggregator");
     const mockV3Aggregator = await MockV3Aggregator.deploy(DECIMALS, INITIAL_PRICE);
     await mockV3Aggregator.deployed();
-
-    console.log("Mock Price Feed deployed to:", mockPriceFeed.getAddress());
 }
 
 main().catch((error) => {
@@ -52,12 +50,24 @@ describe("Littercoin Smart Contract", function () {
 
     // Create Littercoin
     it("should mint Littercoin tokens correctly", async function () {
+
+        // Sign a valid mint request off-chain
+        const amount = 10;
+        const nonce = 1;
+        const messageHash = ethers.solidityPackedKeccak256(
+            ["address", "uint256", "uint256"],
+            [user1.address, amount, nonce]
+        );
+        const signature = await owner.signMessage(ethers.getBytes(messageHash));
+
         // Mint tokens for user1
-        await littercoin.connect(user1).mint(10);
+        await expect(littercoin.connect(user1).mint(amount, nonce, signature))
+            .to.emit(littercoin, "Mint")
+            .withArgs(user1.address, amount);
 
         // Check user1's Littercoin balance
         const userBalance = await littercoin.balanceOf(user1.address);
-        expect(userBalance).to.equal(10);
+        expect(userBalance).to.equal(amount);
     });
 
     // Create Littercoin - validation 1

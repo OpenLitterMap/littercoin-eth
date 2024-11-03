@@ -56,10 +56,19 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
 
     /// @notice Users can mint Littercoin tokens
     /// @param amount The amount of tokens to mint
-    function mint (uint256 amount) external {
+    /// @param nonce The nonce provided by the backend
+    /// @param signature The signature provided by the backend
+    function mint (uint256 amount, uint256 nonce, bytes memory signature) external {
         require(amount > 0, "Amount must be greater than zero");
 
-        // To do - enable backend authorisation
+        // The backend provides a signed message
+        // Construct the hash to be signed
+        bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, amount, nonce));
+        bytes32 ethSignedMessageHash = getEthSignedMessageHash(messageHash);
+
+        // Verify the signature
+        address signer = recoverSigner(ethSignedMessageHash, signature);
+        require(signer == owner(), "Invalid signature");
 
         // Update the minted amount for the user
         littercoinAmounts[msg.sender] += amount;
@@ -68,6 +77,26 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
         _mint(msg.sender, amount);
 
         emit Mint(msg.sender, amount);
+    }
+
+    function getEthSignedMessageHash (bytes32 _messageHash) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _messageHash));
+    }
+
+    function recoverSigner (bytes32 _ethSignedMessageHash, bytes memory _signature) internal pure returns (address) {
+        (bytes32 r, bytes32 s, uint8 v) = splitSignature(_signature);
+
+        return ecrecover(_ethSignedMessageHash, v, r, s);
+    }
+
+    function splitSignature(bytes memory sig) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
+        require(sig.length == 65, "Invalid signature length");
+
+        assembly {
+            r := mload(add(sig, 32))
+            s := mload(add(sig, 64))
+            v := byte(0, mload(add(sig, 96)))
+        }
     }
 
     /// @notice Event emitted when a user mints Littercoin

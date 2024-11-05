@@ -8,8 +8,6 @@ async function main() {
     const MockV3Aggregator = await ethers.getContractFactory("MockV3Aggregator");
     const mockV3Aggregator = await MockV3Aggregator.deploy(DECIMALS, INITIAL_PRICE);
     await mockV3Aggregator.deployed();
-
-    console.log("Mock Price Feed deployed to:", mockPriceFeed.getAddress());
 }
 
 main().catch((error) => {
@@ -52,18 +50,28 @@ describe("Littercoin Smart Contract", function () {
 
     // Create Littercoin
     it("should mint Littercoin tokens correctly", async function () {
+        const amount = 10;
+        const nonce = 1;
+        const signature = getMintSignature(owner, user1.address, amount, nonce);
+
         // Mint tokens for user1
-        await littercoin.connect(user1).mint(10);
+        await expect(littercoin.connect(user1).mint(amount, nonce, signature))
+            .to.emit(littercoin, "Mint")
+            .withArgs(user1.address, amount);
 
         // Check user1's Littercoin balance
         const userBalance = await littercoin.balanceOf(user1.address);
-        expect(userBalance).to.equal(10);
+        expect(userBalance).to.equal(amount);
     });
 
     // Create Littercoin - validation 1
     it("should not mint Littercoin if the amount is zero", async function () {
-        // Attempt to mint zero tokens, expecting a revert
-        await expect(littercoin.connect(user1).mint(0)).to.be.revertedWith("Amount must be greater than zero");
+        const amount = 0;
+        const nonce = 2;
+        const signature = getMintSignature(owner, user1.address, amount, nonce);
+
+        await expect(littercoin.connect(user1).mint(amount, nonce, signature))
+            .to.be.revertedWith("Amount must be greater than zero");
     });
 
     // Create Merchant Token
@@ -94,7 +102,10 @@ describe("Littercoin Smart Contract", function () {
         expect(user2Balance).to.equal(1);
 
         // Mint Littercoin for user3
-        await littercoin.connect(user3).mint(1);
+        const nonce = 3;
+        const amount = 1;
+        const signature = getMintSignature(owner, user3.address, amount, nonce);
+        await littercoin.connect(user3).mint(amount, nonce, signature);
         const user3Balance = await littercoin.balanceOf(user3.address);
         expect(user3Balance).to.equal(1);
 
@@ -126,7 +137,10 @@ describe("Littercoin Smart Contract", function () {
 
     it("should revert redeeming Littercoin if user does not have a Merchant Token", async function () {
         // Mint Littercoin for user2
-        await littercoin.connect(user2).mint(500);
+        const nonce = 4;
+        const amount = 500;
+        const signature = getMintSignature(owner, user2.address, amount, nonce);
+        await littercoin.connect(user2).mint(amount, nonce, signature);
 
         // Attempt to redeem Littercoin without a Merchant Token, expecting a revert
         await expect(littercoin.connect(user2).redeemLittercoin(500)).to.be.revertedWith("Must hold a Merchant Token");
@@ -150,9 +164,32 @@ describe("Littercoin Smart Contract", function () {
         await merchantToken.connect(owner).mint(user1.address);
 
         // Mint Littercoin for user1
-        await littercoin.connect(user1).mint(500);
+        const nonce = 5;
+        const amount = 500;
+        const signature = getMintSignature(owner, user1.address, amount, nonce);
+        await littercoin.connect(user1).mint(amount, nonce, signature);
 
         // Attempt to redeem Littercoin without sufficient ETH, expecting a revert
-        await expect(littercoin.connect(user1).redeemLittercoin(500)).to.be.revertedWith("Not enough ETH in contract");
+        await expect(littercoin.connect(user1).redeemLittercoin(amount))
+            .to.be.revertedWith("Not enough ETH in contract");
     });
+
+    /**
+     * Helper function to get a signature for minting tokens.
+     *
+     * @param {Object} signer - The signer (owner) who will sign the message.
+     * @param {string} userAddress - The address of the user for whom tokens will be minted.
+     * @param {number} amount - The amount of tokens to mint.
+     * @param {number} nonce - The unique nonce to ensure the signature is unique.
+     * @returns {Promise<string>} - The signature for the minting request.
+     */
+    async function getMintSignature (signer, userAddress, amount, nonce)
+    {
+        const messageHash = ethers.solidityPackedKeccak256(
+            ["address", "uint256", "uint256"],
+            [userAddress, amount, nonce]
+        );
+
+        return await signer.signMessage(ethers.getBytes(messageHash));
+    }
 });

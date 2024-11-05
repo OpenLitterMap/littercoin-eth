@@ -45,7 +45,31 @@ contract MerchantToken is ERC721, ERC721Enumerable, Ownable {
     /// @return bool Returns true if the token is expired, otherwise false
     function isExpired (uint256 tokenId) public view returns (bool) {
         require(_exists(tokenId), "Token does not exist");
+
         return block.timestamp > _tokenExpiry[tokenId];
+    }
+
+    /// @notice Checks if a user holds a valid (non-expired) Merchant Token
+    /// @param user The address of the user
+    /// @return bool Returns true if the user holds at least one valid Merchant Token, otherwise false
+    function hasValidMerchantToken (address user) public view returns (bool) {
+        uint256 balance = balanceOf(user);
+
+        if (balance == 0) {
+            return false;
+        }
+
+        for (uint256 i = 0; i < balance; i++) {
+            uint256 tokenId = tokenOfOwnerByIndex(user, i);
+
+            if (!isExpired(tokenId)) {
+                // User has at least one valid Merchant Token
+                return true;
+            }
+        }
+
+        // No valid Merchant Tokens found
+        return false;
     }
 
     /// @notice Gets the expiry timestamp of a specific token
@@ -53,6 +77,7 @@ contract MerchantToken is ERC721, ERC721Enumerable, Ownable {
     /// @return uint256 The expiry timestamp of the token
     function getExpiry (uint256 tokenId) public view returns (uint256) {
         require(_exists(tokenId), "Token does not exist");
+
         return _tokenExpiry[tokenId];
     }
 

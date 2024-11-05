@@ -101,26 +101,23 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
 
     /// @notice Event emitted when a user mints Littercoin
     event Mint(address indexed user, uint256 amount);
-
-    /// @notice Checks if a user holds a Merchant Token
-    /// @param user The address of the user
-    /// @return True if the user holds a Merchant Token, false otherwise
-    function hasMerchantToken (address user) public view returns (bool) {
-        return merchantToken.balanceOf(user) > 0;
-    }
-
-    /// @notice Allows users with a Merchant Token to redeem Littercoin for ETH
+    
+    /// @notice Allows users with a Merchant Token to send Littercoin in and get ETH out
     /// @param amount The amount of Littercoin to redeem
     function redeemLittercoin (uint256 amount) external nonReentrant {
-        require(hasMerchantToken(msg.sender), "Must hold a Merchant Token");
+        require(merchantToken.balanceOf(msg.sender) > 0, "Must hold a Merchant Token");
+        require(merchantToken.hasValidMerchantToken(msg.sender), "Must hold a Valid Merchant Token");
         require(balanceOf(msg.sender) >= amount, "Insufficient Littercoin balance");
         require(address(this).balance >= amount, "Not enough ETH in contract");
 
         // Transfer Littercoin from user to contract
         _transfer(msg.sender, address(this), amount);
 
-        // Transfer ETH to the user
-        payable(msg.sender).transfer(amount);
+        uint256 ethToTransfer = amount;
+
+        // Transfer ETH to the user with reentrancy protection
+        (bool success, ) = payable(msg.sender).call{value: ethToTransfer}("");
+        require(success, "Transfer failed");
 
         emit Redeem(msg.sender, amount, amount);
     }

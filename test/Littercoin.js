@@ -113,7 +113,7 @@ describe("Littercoin Smart Contract", function () {
         expect(user3Balance).to.equal(1);
 
         // User3 sends the Littercoin to the Merchant Token Holder (user2)
-        await littercoin.connect(user3).transfer(user2.address, 1);
+        await littercoin.connect(user3)["safeTransferFrom(address,address,uint256)"](user3.address, user2.address, 1);
         const user3BalanceZero = await littercoin.balanceOf(user3.address);
         expect(user3BalanceZero).to.equal(0);
 
@@ -123,7 +123,7 @@ describe("Littercoin Smart Contract", function () {
         // Merchant Token Holder (user2) sends the Littercoin to the Smart Contract
         // They should receive 1 ETH in return
         // and have 0 littercoin
-        await littercoin.connect(user2).burnLittercoin(1);
+        await littercoin.connect(user2).burnLittercoin([1], { gasLimit: 100000 });
 
         // Check user2 Littercoin balance after redemption
         const user2LittercoinBalance_a = await littercoin.balanceOf(user2.address);
@@ -147,7 +147,8 @@ describe("Littercoin Smart Contract", function () {
         await littercoin.connect(user2).mint(amount, nonce, expiry, signature);
 
         // Attempt to redeem Littercoin without a Merchant Token, expecting a revert
-        await expect(littercoin.connect(user2).burnLittercoin(500)).to.be.revertedWith("Must hold a Merchant Token");
+        await expect(littercoin.connect(user2).burnLittercoin([1], { gasLimit: 5000000 }))
+            .to.be.revertedWith("Must hold a Merchant Token");
     });
 
     it("should reward OLMRewardToken correctly upon receiving ETH", async function () {
@@ -175,7 +176,7 @@ describe("Littercoin Smart Contract", function () {
         await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
 
         // Attempt to redeem Littercoin without sufficient ETH, expecting a revert
-        await expect(littercoin.connect(user1).burnLittercoin(amount))
+        await expect(littercoin.connect(user1).burnLittercoin([1], { gasLimit: 1000000 }))
             .to.be.revertedWith("Not enough ETH in contract");
     });
 

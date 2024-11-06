@@ -86,10 +86,6 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         require(block.timestamp <= expiry, "Signature expired");
         require(!usedNonces[nonce], "Nonce already used");
 
-        // Get the ID of this Littercoin and increment the count for the next one
-        uint256 tokenId = tokenCounter;
-        tokenCounter += 1;
-
         // Update nonce as used
         usedNonces[nonce] = true;
 
@@ -101,11 +97,17 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         address signer = recoverSigner(ethSignedMessageHash, signature);
         require(signer == owner(), "Invalid signature");
 
-        // Mint tokens to the user
-        _safeMint(msg.sender, tokenId);
+        // Mint tokens for the user
+        for (uint256 i = 0; i < amount; i++) {
+            uint256 tokenId = tokenCounter;
+            tokenCounter += 1;
 
-        // Initialize the transfer count for the newly minted NFT
-        transferCount[tokenId] = 0;
+            // Mint tokens to the user
+            _safeMint(msg.sender, tokenId);
+
+            // Initialize the transfer count for the newly minted NFT
+            transferCount[tokenId] = 0;
+        }
 
         emit Mint(msg.sender, amount);
     }

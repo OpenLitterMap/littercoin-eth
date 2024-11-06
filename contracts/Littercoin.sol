@@ -2,11 +2,10 @@
 pragma solidity ^0.8.0;
 
 // Import OpenZeppelin Contracts v4.9.2
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 // Import Dependencies
 import { MerchantToken } from "./MerchantToken.sol";
@@ -15,9 +14,21 @@ import { OLMRewardToken } from "./OLMRewardToken.sol";
 import "hardhat/console.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-contract Littercoin is ERC20, Ownable, ReentrancyGuard {
-    // Mapping to track the total amount minted by each user
-    mapping(address => uint256) public littercoinAmounts;
+contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
+    // ID of the next Littercoin to be minted
+    uint256 public tokenCounter;
+
+    // Used nonces for preventing replay attacks
+    mapping(uint256 => bool) public usedNonces;
+
+    // Mapping to track whether a Littercoin has been invalidated
+    mapping(uint256 => bool) public invalidTokens;
+
+    // Mapping to track the number of transactions for each Littercoin NFT
+    mapping(uint256 => uint256) public transferCount;
+
+    // Define a limit for the number of transactions each Littercoin can have
+    uint256 public constant MAX_TRANSACTIONS = 3;
 
     // OLM Reward Token
     OLMRewardToken public rewardToken;
@@ -29,7 +40,9 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
     AggregatorV3Interface internal priceFeed;
 
     /// @notice Contract constructor
-    constructor (address _priceFeed) ERC20("Littercoin", "LITTERX") {
+    constructor (address _priceFeed) ERC721("Littercoin", "LITTERX") {
+        tokenCounter = 1;
+
         // Deploy the Reward Token and transfer ownership to this contract
         rewardToken = new OLMRewardToken();
         rewardToken.transferOwnership(address(this));
@@ -41,6 +54,15 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
         // Set up Chainlink Price Feed (ETH/USD on mainnet)
         priceFeed = AggregatorV3Interface(_priceFeed);
     }
+
+    /// @notice Event emitted when a user mints Littercoin
+    event Mint(address indexed user, uint256 amount);
+
+    /// @notice Event emitted when a valid Merchant Token Holder burns Littercoin for ETH
+    event BurnLittercoin (address indexed user, uint256 tokensToBurn, uint256 ethAmount);
+
+    /// @notice Event emitted when a user is rewarded OLM Reward Tokens
+    event Reward (address indexed user, uint256 rewardAmount);
 
     /// @notice Getter function for rewardToken address
     /// @notice - only needed for testing
@@ -57,24 +79,33 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
     /// @notice Users can mint Littercoin tokens
     /// @param amount The amount of tokens to mint
     /// @param nonce The nonce provided by the backend
+    /// @param expiry The expiry time of the signature
     /// @param signature The signature provided by the backend
-    function mint (uint256 amount, uint256 nonce, bytes memory signature) external {
+    function mint (uint256 amount, uint256 nonce, uint256 expiry, bytes memory signature) external {
         require(amount > 0, "Amount must be greater than zero");
+        require(block.timestamp <= expiry, "Signature expired");
+        require(!usedNonces[nonce], "Nonce already used");
 
-        // The backend provides a signed message
-        // Construct the hash to be signed
-        bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, amount, nonce));
+        // Get the ID of this Littercoin and increment the count for the next one
+        uint256 tokenId = tokenCounter;
+        tokenCounter += 1;
+
+        // Update nonce as used
+        usedNonces[nonce] = true;
+
+        // Construct the hash to be signed by the backend
+        bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, amount, nonce, expiry));
         bytes32 ethSignedMessageHash = getEthSignedMessageHash(messageHash);
 
         // Verify the signature
         address signer = recoverSigner(ethSignedMessageHash, signature);
         require(signer == owner(), "Invalid signature");
 
-        // Update the minted amount for the user
-        littercoinAmounts[msg.sender] += amount;
-
         // Mint tokens to the user
-        _mint(msg.sender, amount);
+        _safeMint(msg.sender, tokenId);
+
+        // Initialize the transfer count for the newly minted NFT
+        transferCount[tokenId] = 0;
 
         emit Mint(msg.sender, amount);
     }
@@ -89,7 +120,7 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
         return ecrecover(_ethSignedMessageHash, v, r, s);
     }
 
-    function splitSignature(bytes memory sig) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
+    function splitSignature (bytes memory sig) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
         require(sig.length == 65, "Invalid signature length");
 
         assembly {
@@ -99,33 +130,62 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
         }
     }
 
-    /// @notice Event emitted when a user mints Littercoin
-    event Mint(address indexed user, uint256 amount);
-    
-    /// @notice Allows users with a Merchant Token to send Littercoin in and get ETH out
-    /// @param amount The amount of Littercoin to redeem
-    function redeemLittercoin (uint256 amount) external nonReentrant {
-        require(merchantToken.balanceOf(msg.sender) > 0, "Must hold a Merchant Token");
-        require(merchantToken.hasValidMerchantToken(msg.sender), "Must hold a Valid Merchant Token");
-        require(balanceOf(msg.sender) >= amount, "Insufficient Littercoin balance");
-        require(address(this).balance >= amount, "Not enough ETH in contract");
+    /// @notice Track each token transfer and increment the count
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 batchSize
+    ) internal override(ERC721, ERC721Enumerable) {
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
 
-        // Transfer Littercoin from user to contract
-        _transfer(msg.sender, address(this), amount);
-
-        uint256 ethToTransfer = amount;
-
-        // Transfer ETH to the user with reentrancy protection
-        (bool success, ) = payable(msg.sender).call{value: ethToTransfer}("");
-        require(success, "Transfer failed");
-
-        emit Redeem(msg.sender, amount, amount);
+        // Increment the transfer count when the token is transferred
+        if (from != address(0) && to != address(0)) {
+            transferCount[tokenId] += 1;
+            require(transferCount[tokenId] <= MAX_TRANSACTIONS, "Token transfer count exceeded limit, token is now invalidated.");
+        }
     }
 
-    /// @notice Event emitted when a user redeems Littercoin for ETH
-    event Redeem (address indexed user, uint256 littercoinAmount, uint256 ethAmount);
+    // Override the supportsInterface function to include ERC721Enumerable
+    function supportsInterface (bytes4 interfaceId) public view override(ERC721, ERC721Enumerable) returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
 
-    /// @notice Accepts ETH and rewards OLM Reward Tokens based on the amount
+    /// @notice Burn multiple Littercoin NFTs and transfer the average ETH per NFT to the merchant
+    /// @param tokenIds The IDs of the Littercoin NFTs to redeem
+    function burnLittercoin (uint256[] calldata tokenIds) external nonReentrant {
+        // Check for Littercoin to burn
+        uint256 numTokens = tokenIds.length;
+        require(numTokens > 0, "No tokens provided.");
+
+        // Ensure the caller holds a valid Merchant Token
+        require(merchantToken.balanceOf(msg.sender) > 0, "Must hold a Merchant Token.");
+        require(merchantToken.hasValidMerchantToken(msg.sender), "Must hold a Valid Merchant Token.");
+
+        // Ensure there is more than 0 ETH in the contract
+        uint256 contractBalance = address(this).balance;
+        require(contractBalance > 0, "Not enough ETH in contract.");
+
+        // Validate all tokens
+        for (uint256 i = 0; i < numTokens; i++) {
+            uint256 tokenId = tokenIds[i];
+            require(ownerOf(tokenId) == msg.sender, "Caller must own all tokens being redeemed.");
+            require(transferCount[tokenId] <= 2, "Token has been invalidated due to too many transfers.");
+            _burn(tokenId);
+        }
+
+        // Calculate the total number of eligible tokens to redeem
+        uint256 ethAmountPerToken = contractBalance / numTokens;
+        uint256 totalEthToTransfer = ethAmountPerToken * numTokens;
+
+        // Transfer the total ETH to the caller with reentrancy protection
+        (bool success, ) = payable(msg.sender).call{value: totalEthToTransfer}("");
+        require(success, "Transfer failed");
+
+        emit BurnLittercoin(msg.sender, numTokens, totalEthToTransfer);
+    }
+
+    /// @notice Accepts ETH and rewards OLMRewardTokens based on the amount
     receive () external payable {
         uint256 ethAmount = msg.value;
 
@@ -150,7 +210,4 @@ contract Littercoin is ERC20, Ownable, ReentrancyGuard {
 
         emit Reward(msg.sender, rewardAmount);
     }
-
-    /// @notice Event emitted when a user is rewarded OLM Reward Tokens
-    event Reward (address indexed user, uint256 rewardAmount);
 }

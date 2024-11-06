@@ -50,12 +50,13 @@ describe("Littercoin Smart Contract", function () {
 
     // Create Littercoin
     it("should mint Littercoin tokens correctly", async function () {
-        const amount = 10;
         const nonce = 1;
-        const signature = getMintSignature(owner, user1.address, amount, nonce);
+        const amount = 10;
+        const expiry = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+        const signature = getMintSignature(owner, user1.address, amount, nonce, expiry);
 
         // Mint tokens for user1
-        await expect(littercoin.connect(user1).mint(amount, nonce, signature))
+        await expect(littercoin.connect(user1).mint(amount, nonce, expiry, signature))
             .to.emit(littercoin, "Mint")
             .withArgs(user1.address, amount);
 
@@ -68,9 +69,10 @@ describe("Littercoin Smart Contract", function () {
     it("should not mint Littercoin if the amount is zero", async function () {
         const amount = 0;
         const nonce = 2;
-        const signature = getMintSignature(owner, user1.address, amount, nonce);
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = getMintSignature(owner, user1.address, amount, nonce, expiry);
 
-        await expect(littercoin.connect(user1).mint(amount, nonce, signature))
+        await expect(littercoin.connect(user1).mint(amount, nonce, expiry, signature))
             .to.be.revertedWith("Amount must be greater than zero");
     });
 
@@ -104,8 +106,9 @@ describe("Littercoin Smart Contract", function () {
         // Mint Littercoin for user3
         const nonce = 3;
         const amount = 1;
-        const signature = getMintSignature(owner, user3.address, amount, nonce);
-        await littercoin.connect(user3).mint(amount, nonce, signature);
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = getMintSignature(owner, user3.address, amount, nonce, expiry);
+        await littercoin.connect(user3).mint(amount, nonce, expiry, signature);
         const user3Balance = await littercoin.balanceOf(user3.address);
         expect(user3Balance).to.equal(1);
 
@@ -120,7 +123,7 @@ describe("Littercoin Smart Contract", function () {
         // Merchant Token Holder (user2) sends the Littercoin to the Smart Contract
         // They should receive 1 ETH in return
         // and have 0 littercoin
-        await littercoin.connect(user2).redeemLittercoin(1);
+        await littercoin.connect(user2).burnLittercoin(1);
 
         // Check user2 Littercoin balance after redemption
         const user2LittercoinBalance_a = await littercoin.balanceOf(user2.address);
@@ -139,11 +142,12 @@ describe("Littercoin Smart Contract", function () {
         // Mint Littercoin for user2
         const nonce = 4;
         const amount = 500;
-        const signature = getMintSignature(owner, user2.address, amount, nonce);
-        await littercoin.connect(user2).mint(amount, nonce, signature);
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = getMintSignature(owner, user2.address, amount, nonce, expiry);
+        await littercoin.connect(user2).mint(amount, nonce, expiry, signature);
 
         // Attempt to redeem Littercoin without a Merchant Token, expecting a revert
-        await expect(littercoin.connect(user2).redeemLittercoin(500)).to.be.revertedWith("Must hold a Merchant Token");
+        await expect(littercoin.connect(user2).burnLittercoin(500)).to.be.revertedWith("Must hold a Merchant Token");
     });
 
     it("should reward OLMRewardToken correctly upon receiving ETH", async function () {
@@ -154,7 +158,7 @@ describe("Littercoin Smart Contract", function () {
             value: ethers.parseEther("1"),
         });
 
-        // Check user1's OLMRewardToken balance (should be 2000 OLMRT)
+        // Check user1's OLMRewardToken balance ($2000 eth => 2000 OLMRewardTokens)
         const rewardBalance = await rewardToken.balanceOf(user1.address);
         expect(rewardBalance).to.equal(2000);
     });
@@ -166,11 +170,12 @@ describe("Littercoin Smart Contract", function () {
         // Mint Littercoin for user1
         const nonce = 5;
         const amount = 500;
-        const signature = getMintSignature(owner, user1.address, amount, nonce);
-        await littercoin.connect(user1).mint(amount, nonce, signature);
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = getMintSignature(owner, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
 
         // Attempt to redeem Littercoin without sufficient ETH, expecting a revert
-        await expect(littercoin.connect(user1).redeemLittercoin(amount))
+        await expect(littercoin.connect(user1).burnLittercoin(amount))
             .to.be.revertedWith("Not enough ETH in contract");
     });
 
@@ -181,13 +186,14 @@ describe("Littercoin Smart Contract", function () {
      * @param {string} userAddress - The address of the user for whom tokens will be minted.
      * @param {number} amount - The amount of tokens to mint.
      * @param {number} nonce - The unique nonce to ensure the signature is unique.
+     * @param {number} expiry - The expiry time of the minting
      * @returns {Promise<string>} - The signature for the minting request.
      */
-    async function getMintSignature (signer, userAddress, amount, nonce)
+    async function getMintSignature (signer, userAddress, amount, nonce, expiry)
     {
         const messageHash = ethers.solidityPackedKeccak256(
-            ["address", "uint256", "uint256"],
-            [userAddress, amount, nonce]
+            ["address", "uint256", "uint256", "uint256"],
+            [userAddress, amount, nonce, expiry]
         );
 
         return await signer.signMessage(ethers.getBytes(messageHash));

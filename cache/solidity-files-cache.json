@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/sean/solidity/littercoin/contracts/Littercoin.sol": {
-      "lastModificationDate": 1730810102879,
-      "contentHash": "1b26cf973122e620174c8f7b4461de6a",
+      "lastModificationDate": 1730897504107,
+      "contentHash": "b3b8b0052c3238cfefcd3028dfa438eb",
       "sourceName": "contracts/Littercoin.sol",
       "solcConfig": {
         "version": "0.8.27",
@@ -30,11 +30,10 @@
         }
       },
       "imports": [
-        "@openzeppelin/contracts/token/ERC20/ERC20.sol",
-        "@openzeppelin/contracts/access/Ownable.sol",
-        "@openzeppelin/contracts/security/ReentrancyGuard.sol",
         "@openzeppelin/contracts/token/ERC721/ERC721.sol",
         "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/security/ReentrancyGuard.sol",
         "./MerchantToken.sol",
         "./OLMRewardToken.sol",
         "hardhat/console.sol",

@@ -22,6 +22,7 @@ describe("Littercoin Smart Contract", function () {
     let mockV3Aggregator;
     let decimals = 8;
     let initialPrice = ethers.parseUnits("2000", decimals);
+    const merchantTokenExpiry = Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60); // 30 days from now
 
     beforeEach(async function () {
 
@@ -79,7 +80,7 @@ describe("Littercoin Smart Contract", function () {
     // Create Merchant Token
     it("should mint Merchant Token tokens correctly", async function () {
         // The owner can mint a Merchant Token for user2.
-        await merchantToken.connect(owner).mint(user2.address);
+        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
 
         // Check user2s Merchant Token balance
         const user2Balance = await merchantToken.balanceOf(user2.address);
@@ -99,7 +100,7 @@ describe("Littercoin Smart Contract", function () {
         expect(contractBalance).to.equal(ethers.parseEther("1"));
 
         // Mint Merchant Token for user2
-        await merchantToken.connect(owner).mint(user2.address);
+        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
         const user2Balance = await merchantToken.balanceOf(user2.address);
         expect(user2Balance).to.equal(1);
 
@@ -141,14 +142,14 @@ describe("Littercoin Smart Contract", function () {
     it("should revert redeeming Littercoin if user does not have a Merchant Token", async function () {
         // Mint Littercoin for user2
         const nonce = 4;
-        const amount = 500;
+        const amount = 1;
         const expiry = Math.floor(Date.now() / 1000) + 3600;
         const signature = getMintSignature(owner, user2.address, amount, nonce, expiry);
         await littercoin.connect(user2).mint(amount, nonce, expiry, signature);
 
         // Attempt to redeem Littercoin without a Merchant Token, expecting a revert
         await expect(littercoin.connect(user2).burnLittercoin([1], { gasLimit: 5000000 }))
-            .to.be.revertedWith("Must hold a Merchant Token");
+            .to.be.revertedWith("Must hold a Valid Merchant Token.");
     });
 
     it("should reward OLMRewardToken correctly upon receiving ETH", async function () {
@@ -166,18 +167,18 @@ describe("Littercoin Smart Contract", function () {
 
     it("should revert redeeming Littercoin if contract has insufficient ETH", async function () {
         // Mint Merchant Token to user1
-        await merchantToken.connect(owner).mint(user1.address);
+        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
 
         // Mint Littercoin for user1
         const nonce = 5;
-        const amount = 500;
+        const amount = 1;
         const expiry = Math.floor(Date.now() / 1000) + 3600;
         const signature = getMintSignature(owner, user1.address, amount, nonce, expiry);
         await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
 
         // Attempt to redeem Littercoin without sufficient ETH, expecting a revert
         await expect(littercoin.connect(user1).burnLittercoin([1], { gasLimit: 1000000 }))
-            .to.be.revertedWith("Not enough ETH in contract");
+            .to.be.revertedWith("Not enough ETH in contract.");
     });
 
     /**

@@ -66,6 +66,11 @@ describe("Littercoin Smart Contract", function () {
         expect(userBalance).to.equal(amount);
     });
 
+    it("should not allow non-owner to mint Merchant Tokens", async function () {
+        await expect(merchantToken.connect(user1).mint(user2.address, merchantTokenExpiry))
+            .to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
     // Create Littercoin - validation 1
     it("should not mint Littercoin if the amount is zero", async function () {
         const amount = 0;
@@ -207,21 +212,14 @@ describe("Littercoin Smart Contract", function () {
         const signature = await getMintSignature(owner, user2.address, amount, nonce, expiry);
         await littercoin.connect(user2).mint(amount, nonce, expiry, signature);
 
-        const block1 = await ethers.provider.getBlock('latest');
-        console.log('Before time advancement, block timestamp:', block1.timestamp);
-        console.log('Merchant Token expiry timestamp:', merchantTokenExpiry);
-
         // Fast forward time by 2 hours to expire the Merchant Token
         await ethers.provider.send("evm_increaseTime", [3 * 3600]); // Increase time by 3 hours
         await ethers.provider.send("evm_mine"); // Mine a new block to apply the time increase
 
-        const block2 = await ethers.provider.getBlock('latest');
-        console.log('After time advancement, block timestamp:', block2.timestamp);
-
         // Verify that the Merchant Token is expired
         const tokenId = await merchantToken.getTokenIdByOwner(user2.address);
         const isExpired = await merchantToken.isExpired(tokenId);
-        console.log('Is Merchant Token expired?', isExpired); // Should output: true
+        expect(isExpired).to.equal(true);
 
         // Add eth to the contract
         await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });

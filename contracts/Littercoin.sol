@@ -159,7 +159,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         // Check for Littercoin to burn
         uint256 numTokens = tokenIds.length;
         require(numTokens > 0, "No tokens provided.");
-        require(merchantToken.hasValidMerchantToken(msg.sender), "Must hold a Valid Merchant Token.");
+        require(merchantToken.hasValidMerchantToken(msg.sender), "Must hold a valid Merchant Token.");
 
         // Ensure there is more than 0 ETH in the contract
         uint256 contractBalance = address(this).balance;

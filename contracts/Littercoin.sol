@@ -83,7 +83,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     /// @param signature The signature provided by the backend
     function mint (uint256 amount, uint256 nonce, uint256 expiry, bytes memory signature) external {
         require(amount > 0, "Amount must be greater than zero");
-        require(block.timestamp <= expiry, "Signature expired");
+        require(block.timestamp <= expiry, "Signature has expired");
         require(!usedNonces[nonce], "Nonce already used");
 
         // Update nonce as used

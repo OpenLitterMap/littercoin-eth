@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { ethers, network} = require("hardhat");
+const { ethers } = require("hardhat");
 
 async function main() {
     const DECIMALS = 8;
@@ -49,6 +49,10 @@ describe("Littercoin Smart Contract", function () {
         merchantToken = await ethers.getContractAt("MerchantToken", merchantTokenAddress);
     });
 
+    /**
+     * Littercoin Tests
+     */
+
     // Create Littercoin
     it("should mint Littercoin tokens correctly", async function () {
         const nonce = 1;
@@ -66,12 +70,13 @@ describe("Littercoin Smart Contract", function () {
         expect(userBalance).to.equal(amount);
     });
 
+    // Create Littercoin - Validation
     it("should not allow non-owner to mint Merchant Tokens", async function () {
         await expect(merchantToken.connect(user1).mint(user2.address, merchantTokenExpiry))
             .to.be.revertedWith("Ownable: caller is not the owner");
     });
 
-    // Create Littercoin - validation 1
+    // Create Littercoin - Validation
     it("should not mint Littercoin if the amount is zero", async function () {
         const amount = 0;
         const nonce = 2;
@@ -81,6 +86,63 @@ describe("Littercoin Smart Contract", function () {
         await expect(littercoin.connect(user1).mint(amount, nonce, expiry, signature))
             .to.be.revertedWith("Amount must be greater than zero");
     });
+
+    // Create Littercoin - Validation
+    it("should not allow minting Littercoin with an invalid signature", async function () {
+        const nonce = 7;
+        const amount = 10;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+
+        // Generate signature using user1 instead of the owner
+        const invalidSignature = await getMintSignature(user1, user2.address, amount, nonce, expiry);
+
+        await expect(littercoin.connect(user2).mint(amount, nonce, expiry, invalidSignature))
+            .to.be.revertedWith("Invalid signature");
+    });
+
+    // Create Littercoin - Validation
+    it("should not allow minting Littercoin with an expired signature", async function () {
+        const nonce = 8;
+        const amount = 10;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp - 3600; // 1 hour ago
+
+        const signature = await getMintSignature(owner, user2.address, amount, nonce, expiry);
+
+        await expect(littercoin.connect(user2).mint(amount, nonce, expiry, signature))
+            .to.be.revertedWith("Signature has expired");
+    });
+
+    // Create Littercoin - Validation
+    it("should not allow minting Littercoin with a reused nonce", async function () {
+        const nonce = 9;
+        const amount = 10;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+
+        const signature = await getMintSignature(owner, user2.address, amount, nonce, expiry);
+
+        // First mint should succeed
+        await littercoin.connect(user2).mint(amount, nonce, expiry, signature);
+
+        // Second mint with the same nonce should fail
+        await expect(littercoin.connect(user2).mint(amount, nonce, expiry, signature))
+            .to.be.revertedWith("Nonce already used");
+    });
+
+    it("should not allow transferring Littercoin to zero address", async function () {
+        const nonce = 14;
+        const amount = 1;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+        const signature = await getMintSignature(owner, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+
+        await expect(
+            littercoin.connect(user1)["safeTransferFrom(address,address,uint256)"](user1.address, ethers.ZeroAddress, 1)
+        ).to.be.revertedWith("ERC721: transfer to the zero address");
+    });
+
+    /**
+     * Merchant Token Tests
+     */
 
     // Create Merchant Token
     it("should mint Merchant Token tokens correctly", async function () {
@@ -229,41 +291,86 @@ describe("Littercoin Smart Contract", function () {
             .to.be.revertedWith("Must hold a valid Merchant Token.");
     });
 
-    // it("should update valid token status upon transferring Merchant Token", async function () {
-    //     // Mint Merchant Token for user1
-    //     await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
-    //
-    //     // Mint Littercoin for user1 and user2
-    //     const nonce1 = 8;
-    //     const amount = 1;
-    //     const expiry = Math.floor(Date.now() / 1000) + 3600;
-    //     const signature1 = await getMintSignature(owner, user1.address, amount, nonce1, expiry);
-    //     await littercoin.connect(user1).mint(amount, nonce1, expiry, signature1);
-    //
-    //     const nonce2 = 9;
-    //     const signature2 = await getMintSignature(owner, user2.address, amount, nonce2, expiry);
-    //     await littercoin.connect(user2).mint(amount, nonce2, expiry, signature2);
-    //
-    //     // User1 redeems Littercoin successfully
-    //     await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
-    //     await littercoin.connect(user1).burnLittercoin([1]);
-    //
-    //     // Transfer Merchant Token from user1 to user2
-    //     await merchantToken.connect(user1).transferFrom(user1.address, user2.address, 1);
-    //
-    //     // User1 should no longer have a valid Merchant Token
-    //     expect(await merchantToken.hasValidMerchantToken(user1.address)).to.equal(false);
-    //
-    //     // User1 cannot redeem Littercoin now
-    //     await expect(littercoin.connect(user1).burnLittercoin([2]))
-    //         .to.be.revertedWith("Must hold a valid Merchant Token.");
-    //
-    //     // User2 should now have a valid Merchant Token
-    //     expect(await merchantToken.hasValidMerchantToken(user2.address)).to.equal(true);
-    //
-    //     // User2 can redeem Littercoin
-    //     await littercoin.connect(user2).burnLittercoin([2]);
-    // });
+    it("should allow owner to add expiration time to Merchant Token", async function () {
+        const currentTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+        const initialExpiry = currentTimestamp + 3600; // 1 hour from now
+
+        // Mint Merchant Token to user1
+        await merchantToken.connect(owner).mint(user1.address, initialExpiry);
+
+        // Add 2 more hours to the expiration
+        const additionalTime = 2 * 3600;
+        await merchantToken.connect(owner).addExpirationTime(1, additionalTime);
+
+        // Verify the new expiration timestamp
+        const newExpiry = await merchantToken.getExpirationTimestamp(1);
+        expect(newExpiry).to.equal(initialExpiry + additionalTime);
+    });
+
+    it("should not allow adding expiration time to a non-existent Merchant Token", async function () {
+        const additionalTime = 3600;
+
+        await expect(merchantToken.connect(owner).addExpirationTime(999, additionalTime))
+            .to.be.revertedWith("Token does not exist");
+    });
+
+    it("should allow owner to invalidate a Merchant Token", async function () {
+        const currentTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+        const merchantTokenExpiry = currentTimestamp + 3600;
+
+        // Mint Merchant Token to user1
+        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+
+        // Invalidate the Merchant Token
+        await merchantToken.connect(owner).invalidateToken(1);
+
+        // Verify that the token is now expired
+        const isExpired = await merchantToken.isExpired(1);
+        expect(isExpired).to.equal(true);
+
+        // User1 should not be able to redeem Littercoin now
+        await expect(littercoin.connect(user1).burnLittercoin([1]))
+            .to.be.revertedWith("Must hold a valid Merchant Token.");
+    });
+
+    it("should not allow non-owner to invalidate a Merchant Token", async function () {
+        const currentTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+        const merchantTokenExpiry = currentTimestamp + 3600;
+
+        // Mint Merchant Token to user1
+        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+
+        // Attempt to invalidate the token as user1
+        await expect(merchantToken.connect(user1).invalidateToken(1))
+            .to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should prevent users from transferring Merchant Tokens", async function () {
+        // Mint Merchant Token to user1
+        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+
+        // Attempt to transfer the Merchant Token to user2
+        await expect(merchantToken.connect(user1).transferFrom(user1.address, user2.address, 1))
+            .to.be.revertedWith("Transfers are disabled");
+    });
+
+    it("should not allow adding zero additional expiration time", async function () {
+        // Mint Merchant Token to user1
+        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+
+        // Attempt to add zero additional time
+        await expect(merchantToken.connect(owner).addExpirationTime(1, 0))
+            .to.be.revertedWith("Additional time must be greater than zero");
+    });
+
+    it("should allow retrieval of Merchant Token expiration timestamp", async function () {
+        // Mint Merchant Token to user1
+        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+
+        // Retrieve the expiration timestamp
+        const expiryTimestamp = await merchantToken.getExpirationTimestamp(1);
+        expect(expiryTimestamp).to.equal(merchantTokenExpiry);
+    });
 
     /**
      * Helper function to get a signature for minting tokens.

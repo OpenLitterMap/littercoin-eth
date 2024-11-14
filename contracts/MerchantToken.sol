@@ -5,6 +5,8 @@ pragma solidity ^0.8.0;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
+import "hardhat/console.sol";
+
 /// @title MerchantToken Contract
 /// @notice ERC721 token representing Merchant Tokens
 contract MerchantToken is ERC721, Ownable {
@@ -69,7 +71,8 @@ contract MerchantToken is ERC721, Ownable {
         require(_exists(tokenId), "Token does not exist");
         require(!isExpired(tokenId), "Token already expired");
 
-        _expirationTimestamps[tokenId] = block.timestamp;
+        // Set the expiration timestamp to one hour ago
+        _expirationTimestamps[tokenId] = block.timestamp - 3600;
 
         emit MerchantTokenExpired(tokenId);
     }

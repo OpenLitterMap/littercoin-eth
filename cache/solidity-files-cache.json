@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/sean/solidity/littercoin/contracts/Littercoin.sol": {
-      "lastModificationDate": 1731612802802,
-      "contentHash": "85c604bb056b11709c01cf213efe4207",
+      "lastModificationDate": 1731614587470,
+      "contentHash": "0e17b078d6e0e7f5e4705b5e187a9b70",
       "sourceName": "contracts/Littercoin.sol",
       "solcConfig": {
         "version": "0.8.27",
@@ -36,9 +36,9 @@
         "@openzeppelin/contracts/security/ReentrancyGuard.sol",
         "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
         "@openzeppelin/contracts/utils/Counters.sol",
+        "@openzeppelin/contracts/security/Pausable.sol",
         "./MerchantToken.sol",
         "./OLMRewardToken.sol",
-        "hardhat/console.sol",
         "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol"
       ],
       "versionPragmas": [
@@ -49,8 +49,8 @@
       ]
     },
     "/Users/sean/solidity/littercoin/contracts/MerchantToken.sol": {
-      "lastModificationDate": 1731612809206,
-      "contentHash": "81e3481fc968b9bd4e5c91dcdbac85cd",
+      "lastModificationDate": 1731614071218,
+      "contentHash": "ac4bfd01a6881ba96cc7d7a6c15084ce",
       "sourceName": "contracts/MerchantToken.sol",
       "solcConfig": {
         "version": "0.8.27",
@@ -79,8 +79,7 @@
       "imports": [
         "@openzeppelin/contracts/access/Ownable.sol",
         "@openzeppelin/contracts/token/ERC721/ERC721.sol",
-        "@openzeppelin/contracts/utils/Counters.sol",
-        "hardhat/console.sol"
+        "@openzeppelin/contracts/utils/Counters.sol"
       ],
       "versionPragmas": [
         "^0.8.0"
@@ -989,6 +988,44 @@
       ],
       "artifacts": [
         "Counters"
+      ]
+    },
+    "/Users/sean/solidity/littercoin/node_modules/@openzeppelin/contracts/security/Pausable.sol": {
+      "lastModificationDate": 1730136615339,
+      "contentHash": "25c8108f36fdd472bc78d4c4af240c11",
+      "sourceName": "@openzeppelin/contracts/security/Pausable.sol",
+      "solcConfig": {
+        "version": "0.8.27",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../utils/Context.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "Pausable"
       ]
     }
   }

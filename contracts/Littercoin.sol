@@ -8,15 +8,15 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 // Import Dependencies
 import { MerchantToken } from "./MerchantToken.sol";
 import { OLMRewardToken } from "./OLMRewardToken.sol";
 
-import "hardhat/console.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
+contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausable {
 
     using Counters for Counters.Counter;
 
@@ -92,10 +92,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         // Construct the hash to be signed by the backend
         bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, amount, nonce, expiry));
         require(ECDSA.recover(ECDSA.toEthSignedMessageHash(messageHash), signature) == owner(), "Invalid signature");
-        bytes32 ethSignedMessageHash = getEthSignedMessageHash(messageHash);
-
-        // Verify the signature
-        address signer = recoverSigner(ethSignedMessageHash, signature);
+        address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(messageHash), signature);
         require(signer == owner(), "Invalid signature");
 
         // Mint tokens for the user
@@ -111,47 +108,6 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         }
 
         emit Mint(msg.sender, amount);
-    }
-
-    function getEthSignedMessageHash (bytes32 _messageHash) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _messageHash));
-    }
-
-    function recoverSigner (bytes32 _ethSignedMessageHash, bytes memory _signature) internal pure returns (address) {
-        (bytes32 r, bytes32 s, uint8 v) = splitSignature(_signature);
-
-        return ecrecover(_ethSignedMessageHash, v, r, s);
-    }
-
-    function splitSignature (bytes memory sig) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
-        require(sig.length == 65, "Invalid signature length");
-
-        assembly {
-            r := mload(add(sig, 32))
-            s := mload(add(sig, 64))
-            v := byte(0, mload(add(sig, 96)))
-        }
-    }
-
-    /// @notice Track each token transfer and increment the count
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId,
-        uint256 batchSize
-    ) internal override(ERC721, ERC721Enumerable) {
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
-
-        // Increment the transfer count when the token is transferred
-        if (from != address(0) && to != address(0)) {
-            transferCount[tokenId] += 1;
-            require(transferCount[tokenId] <= MAX_TRANSACTIONS, "Token transfer limit exceeded.");
-        }
-    }
-
-    // Override the supportsInterface function to include ERC721Enumerable
-    function supportsInterface (bytes4 interfaceId) public view override(ERC721, ERC721Enumerable) returns (bool) {
-        return super.supportsInterface(interfaceId);
     }
 
     /// @notice Burn multiple Littercoin NFTs and transfer the average ETH per NFT to the merchant
@@ -189,12 +145,13 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     }
 
     /// @notice Accepts ETH and rewards OLMRewardTokens based on the amount
-    receive () external payable {
+    receive () external payable nonReentrant {
         uint256 ethAmount = msg.value;
 
         // Get the latest ETH/USD price
         (, int256 price, , , ) = priceFeed.latestRoundData();
         require(price > 0, "Invalid price from Chainlink");
+        require(priceFeed.decimals() == 8, "Unexpected price feed decimals");
 
         // Convert price to uint256 and get reward amount
         // assume $2000 for testing
@@ -217,5 +174,35 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     // @notice Get the current token ID
     function getCurrentTokenId () external view returns (uint256) {
         return _tokenCounter.current();
+    }
+
+    // Owner can pause and unpause the contract
+    function pause () external onlyOwner {
+        _pause();
+    }
+
+    function unpause () external onlyOwner {
+        _unpause();
+    }
+
+    /// @notice Track each token transfer and increment the count
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 batchSize
+    ) internal override(ERC721, ERC721Enumerable) {
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+
+        // Increment the transfer count when the token is transferred
+        if (from != address(0) && to != address(0)) {
+            transferCount[tokenId] += 1;
+            require(transferCount[tokenId] <= MAX_TRANSACTIONS, "Token transfer limit exceeded.");
+        }
+    }
+
+    // Override the supportsInterface function to include ERC721Enumerable
+    function supportsInterface (bytes4 interfaceId) public view override(ERC721, ERC721Enumerable) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 }

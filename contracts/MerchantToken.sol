@@ -6,8 +6,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-import "hardhat/console.sol";
-
 /// @title MerchantToken Contract
 /// @notice ERC721 token representing Merchant Tokens
 contract MerchantToken is ERC721, Ownable {

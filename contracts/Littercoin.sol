@@ -6,6 +6,8 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 
 // Import Dependencies
 import { MerchantToken } from "./MerchantToken.sol";
@@ -15,14 +17,14 @@ import "hardhat/console.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
+
+    using Counters for Counters.Counter;
+
     // ID of the next Littercoin to be minted
-    uint256 public tokenCounter;
+    Counters.Counter private _tokenCounter;
 
     // Used nonces for preventing replay attacks
     mapping(uint256 => bool) public usedNonces;
-
-    // Mapping to track whether a Littercoin has been invalidated
-    mapping(uint256 => bool) public invalidTokens;
 
     // Mapping to track the number of transactions for each Littercoin NFT
     mapping(uint256 => uint256) public transferCount;
@@ -41,8 +43,6 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
 
     /// @notice Contract constructor
     constructor (address _priceFeed) ERC721("Littercoin", "LITTERX") {
-        tokenCounter = 1;
-
         // Deploy the Reward Token and transfer ownership to this contract
         rewardToken = new OLMRewardToken();
         rewardToken.transferOwnership(address(this));
@@ -91,6 +91,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
 
         // Construct the hash to be signed by the backend
         bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, amount, nonce, expiry));
+        require(ECDSA.recover(ECDSA.toEthSignedMessageHash(messageHash), signature) == owner(), "Invalid signature");
         bytes32 ethSignedMessageHash = getEthSignedMessageHash(messageHash);
 
         // Verify the signature
@@ -99,8 +100,8 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
 
         // Mint tokens for the user
         for (uint256 i = 0; i < amount; i++) {
-            uint256 tokenId = tokenCounter;
-            tokenCounter += 1;
+            _tokenCounter.increment();
+            uint256 tokenId = _tokenCounter.current();
 
             // Mint tokens to the user
             _safeMint(msg.sender, tokenId);
@@ -144,7 +145,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         // Increment the transfer count when the token is transferred
         if (from != address(0) && to != address(0)) {
             transferCount[tokenId] += 1;
-            require(transferCount[tokenId] <= MAX_TRANSACTIONS, "Token transfer count exceeded limit, token is now invalidated.");
+            require(transferCount[tokenId] <= MAX_TRANSACTIONS, "Token transfer limit exceeded.");
         }
     }
 
@@ -156,10 +157,14 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     /// @notice Burn multiple Littercoin NFTs and transfer the average ETH per NFT to the merchant
     /// @param tokenIds The IDs of the Littercoin NFTs to redeem
     function burnLittercoin (uint256[] calldata tokenIds) external nonReentrant {
+        require(merchantToken.hasValidMerchantToken(msg.sender), "Must hold a valid Merchant Token.");
+
         // Check for Littercoin to burn
         uint256 numTokens = tokenIds.length;
         require(numTokens > 0, "No tokens provided.");
-        require(merchantToken.hasValidMerchantToken(msg.sender), "Must hold a valid Merchant Token.");
+
+        uint256 totalSupply = totalSupply();
+        require(totalSupply > 0, "No tokens in circulation.");
 
         // Ensure there is more than 0 ETH in the contract
         uint256 contractBalance = address(this).balance;
@@ -174,8 +179,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         }
 
         // Calculate the total number of eligible tokens to redeem
-        uint256 ethAmountPerToken = contractBalance / numTokens;
-        uint256 totalEthToTransfer = ethAmountPerToken * numTokens;
+        uint256 totalEthToTransfer = (contractBalance * numTokens) / totalSupply;
 
         // Transfer the total ETH to the caller with reentrancy protection
         (bool success, ) = payable(msg.sender).call{value: totalEthToTransfer}("");
@@ -208,5 +212,10 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         rewardToken.mint(msg.sender, rewardAmount);
 
         emit Reward(msg.sender, rewardAmount);
+    }
+
+    // @notice Get the current token ID
+    function getCurrentTokenId () external view returns (uint256) {
+        return _tokenCounter.current();
     }
 }

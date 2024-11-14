@@ -206,6 +206,17 @@ describe("Littercoin Smart Contract", function () {
         expect(user2MerchantTokenBalance).to.equal(1);
     });
 
+    it("should not burn littercoin if no littercoin exists", async function () {
+
+        // Mint Merchant Token for user2
+        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+
+        // Attempt to redeem Littercoin without a Merchant Token, expecting a revert
+        await expect(littercoin.connect(user2).burnLittercoin([1], { gasLimit: 5000000 }))
+            .to.be.revertedWith("No tokens in circulation.");
+
+    });
+
     it("should revert redeeming Littercoin if user does not have a Merchant Token", async function () {
         // Mint Littercoin for user2
         const nonce = 4;

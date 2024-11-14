@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 // Import OpenZeppelin Contracts v4.9.2
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "hardhat/console.sol";
 
@@ -11,8 +12,10 @@ import "hardhat/console.sol";
 /// @notice ERC721 token representing Merchant Tokens
 contract MerchantToken is ERC721, Ownable {
 
+    using Counters for Counters.Counter;
+
     // ID to give to each token
-    uint256 public _tokenCounter;
+    Counters.Counter private _tokenCounter;
 
     // Mapping from owner address to token ID
     // Each address can only have one token
@@ -26,9 +29,7 @@ contract MerchantToken is ERC721, Ownable {
     event MerchantTokenExpired(uint256 tokenId);
     event MerchantTokenRenewed(uint256 tokenId, uint256 newExpirationTimestamp);
 
-    constructor() ERC721("LittercoinMerchantToken", "LXMT") {
-        _tokenCounter = 1;
-    }
+    constructor() ERC721("LittercoinMerchantToken", "LXMT") {}
 
     /// @notice Mints a new Merchant Token to a specified address
     /// @notice - needs backend authorisation
@@ -38,8 +39,8 @@ contract MerchantToken is ERC721, Ownable {
         require(expirationTimestamp > block.timestamp, "Expiration must be in the future.");
         require(balanceOf(to) == 0, "User already has a token");
 
-        uint256 tokenId = _tokenCounter;
-        _tokenCounter += 1;
+        _tokenCounter.increment();
+        uint256 tokenId = _tokenCounter.current();
 
         // Store the expiration timestamp before minting
         _expirationTimestamps[tokenId] = expirationTimestamp;
@@ -140,5 +141,10 @@ contract MerchantToken is ERC721, Ownable {
     /// @dev Overrides the supportsInterface function to add ERC721Enumerable support
     function supportsInterface (bytes4 interfaceId) public view virtual override returns (bool) {
         return super.supportsInterface(interfaceId);
+    }
+
+    // @notice Get the current token ID
+    function getCurrentTokenId () external view returns (uint256) {
+        return _tokenCounter.current();
     }
 }

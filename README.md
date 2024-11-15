@@ -21,13 +21,13 @@ However, if you earn a Littercoin you cannot send it to the smart contract. To a
 to the crypto ecosystem: Merchant Tokens.
 
 A valid merchant token is required to send Littercoin to the smart contract and get the crypto out.
-Therefore, Littercoin can only be spent with participating pre-approved green-listed zero-waste climate
-merchants. Merchants can apply to accept Littercoin and if approved, they will receive a special Merchant NFT
+Therefore, Littercoin can only be spent with participating merchants.
+To tackle the global plastic problem at source, Merchant tokens will only be awarded to pre-approved green-listed 
+zero-waste climate merchants who do not use plastic. If approved, merchants they will receive a special Merchant NFT
 which has a default expiration time of 12 months.
 
-Originally, Littercoin was built with ERC20. However, to enforce additional constraints we have recently
-upgraded Littercoin to adopt NFT format. By doing so we can ensure that each Littercoin has a limited number of 3 
-transactions.
+To enforce additional constraints we have recently upgraded Littercoin to adopt NFT format. 
+By doing so we can ensure that each Littercoin has a limited number of 3 transactions.
 
 1. The mint. You claim your tokens when they are owed.
 2. The transfer. You can send your tokens to a valid merchant token holder.
@@ -35,8 +35,17 @@ transactions.
 
 If any other transaction is attempted, the smart contract will invalidate the littercoin.
 
+This way, Littercoin becomes an exchangeless non-tradable climate currency.
+
+In-line with its zero-waste values Littercoin does not have a logo, as there is too much visual litter stimulus 
+out there already. It's just Littercoin.
+There is no ICO.
+No pre-mine.
+No exchanges.
+The only thing you can do with Littercoin is spend it with a merchant who is not part of the global plastic crisis.
+
 The final challenge is getting crypto into the smart contract to give littercoin value.
 
-By sending crypto to the Smart Contract, users are rewarded with Reward Tokens. For every $1 worth of crypto, users
+By sending crypto to the Smart Contract, users are rewarded with OLMRewardTokens. For every $1 worth of crypto, users
 receive 1 OLMRewardToken. These do not have any purpose or value yet other than to give people a receipt and thanks
 for their support. Stay tuned to see what's next!

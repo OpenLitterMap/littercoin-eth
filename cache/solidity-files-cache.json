@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/sean/solidity/littercoin/contracts/Littercoin.sol": {
-      "lastModificationDate": 1731614587470,
-      "contentHash": "0e17b078d6e0e7f5e4705b5e187a9b70",
+      "lastModificationDate": 1732013455614,
+      "contentHash": "f1734a956f9a0b77abde41a5b9d0d89e",
       "sourceName": "contracts/Littercoin.sol",
       "solcConfig": {
         "version": "0.8.27",

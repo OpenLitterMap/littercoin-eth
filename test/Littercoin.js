@@ -395,10 +395,14 @@ describe("Littercoin Smart Contract", function () {
      */
     async function getMintSignature (signer, userAddress, amount, nonce, expiry)
     {
-        const messageHash = ethers.solidityPackedKeccak256(
-            ["address", "uint256", "uint256", "uint256"],
-            [userAddress, amount, nonce, expiry]
-        );
+        const abiCoder = new ethers.AbiCoder();
+
+        const messageHash = ethers.keccak256(
+            abiCoder.encode(
+                ["address", "uint256", "uint256", "uint256"],
+                [userAddress, amount, nonce, expiry]
+            )
+        )
 
         return await signer.signMessage(ethers.getBytes(messageHash));
     }

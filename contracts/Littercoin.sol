@@ -92,7 +92,6 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
 
         // Construct the hash to be signed by the backend
         bytes32 messageHash = keccak256(abi.encode(msg.sender, amount, nonce, expiry));
-        require(ECDSA.recover(ECDSA.toEthSignedMessageHash(messageHash), signature) == owner(), "Invalid signature");
         address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(messageHash), signature);
         require(signer == owner(), "Invalid signature");
 

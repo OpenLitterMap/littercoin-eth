@@ -85,6 +85,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         require(amount > 0, "Amount must be greater than zero");
         require(block.timestamp <= expiry, "Signature has expired");
         require(!usedNonces[nonce], "Nonce already used");
+        require(!paused(), "ERC721Pausable: token transfer while paused");
 
         // Update nonce as used
         usedNonces[nonce] = true;
@@ -126,6 +127,8 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         uint256 contractBalance = address(this).balance;
         require(contractBalance > 0, "Not enough ETH in contract.");
 
+        require(!paused(), "ERC721Pausable: token transfer while paused");
+
         // Validate all tokens
         for (uint256 i = 0; i < numTokens; i++) {
             uint256 tokenId = tokenIds[i];
@@ -152,12 +155,13 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         (, int256 price, , , ) = priceFeed.latestRoundData();
         require(price > 0, "Invalid price from Chainlink");
         require(priceFeed.decimals() == 8, "Unexpected price feed decimals");
+        require(!paused(), "ERC721Pausable: token transfer while paused");
 
         // Convert price to uint256 and get reward amount
         // assume $2000 for testing
         // Assuming the price feed has 8 decimals
         // Convert price to uint256 and get ethPriceUsd (the price of 1 ETH in USD)
-        uint256 ethPriceUsd = uint256(price); // The price from Chainlink has 8 decimals
+        uint256 ethPriceUsd = uint256(price);
 
         // Calculate the number of reward tokens to mint
         // ethPriceUsd has 8 decimals, so divide by 10^8 to get the actual USD value
@@ -193,6 +197,8 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         uint256 batchSize
     ) internal override(ERC721, ERC721Enumerable) {
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
+
+        require(!paused(), "ERC721Pausable: token transfer while paused");
 
         // Increment the transfer count when the token is transferred
         if (from != address(0) && to != address(0)) {

@@ -27,10 +27,13 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     mapping(uint256 => bool) public usedNonces;
 
     // Mapping to track the number of transactions for each Littercoin NFT
-    mapping(uint256 => uint256) public transferCount;
+    mapping(uint256 => uint8) public transferCount;
 
     // Define a limit for the number of transactions each Littercoin can have
     uint256 public constant MAX_TRANSACTIONS = 3;
+
+    // Define a limit for the number of Littercoin tokens that can be minted at once
+    uint256 public constant MAX_MINT_AMOUNT = 10;
 
     // OLM Reward Token
     OLMRewardToken public rewardToken;
@@ -82,7 +85,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     /// @param expiry The expiry time of the signature
     /// @param signature The signature provided by the backend
     function mint (uint256 amount, uint256 nonce, uint256 expiry, bytes memory signature) external whenNotPaused {
-        require(amount > 0, "Amount must be greater than zero");
+        require(amount > 0 && amount <= MAX_MINT_AMOUNT, "Amount must be greater than zero and less than 10");
         require(block.timestamp <= expiry, "Signature has expired");
         require(!usedNonces[nonce], "Nonce already used");
 

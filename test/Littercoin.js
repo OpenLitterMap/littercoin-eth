@@ -84,7 +84,17 @@ describe("Littercoin Smart Contract", function () {
         const signature = getMintSignature(owner, user1.address, amount, nonce, expiry);
 
         await expect(littercoin.connect(user1).mint(amount, nonce, expiry, signature))
-            .to.be.revertedWith("Amount must be greater than zero");
+            .to.be.revertedWith("Amount must be greater than zero and less than 10");
+    });
+
+    it("should not mint Littercoin if the amount is greater than 10", async function () {
+        const amount = 11;
+        const nonce = 3;
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = getMintSignature(owner, user1.address, amount, nonce, expiry);
+
+        await expect(littercoin.connect(user1).mint(amount, nonce, expiry, signature))
+            .to.be.revertedWith("Amount must be greater than zero and less than 10");
     });
 
     // Create Littercoin - Validation

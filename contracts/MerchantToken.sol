@@ -5,10 +5,11 @@ pragma solidity ^0.8.0;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 /// @title MerchantToken Contract
 /// @notice ERC721 token representing Merchant Tokens
-contract MerchantToken is ERC721, Ownable {
+contract MerchantToken is ERC721, Ownable, Pausable {
 
     using Counters for Counters.Counter;
 
@@ -32,7 +33,7 @@ contract MerchantToken is ERC721, Ownable {
     /// @notice Mints a new Merchant Token to a specified address
     /// @notice - needs backend authorisation
     /// @param to The address to mint the token to
-    function mint (address to, uint256 expirationTimestamp) external onlyOwner {
+    function mint (address to, uint256 expirationTimestamp) external onlyOwner whenNotPaused {
         require(to != address(0), "Cannot mint to zero address");
         require(expirationTimestamp > block.timestamp, "Expiration must be in the future.");
         require(balanceOf(to) == 0, "User already has a token");
@@ -55,7 +56,7 @@ contract MerchantToken is ERC721, Ownable {
     /// @notice Adds additional expiration time to an existing Merchant Token
     /// @param tokenId The ID of the token to renew
     /// @param additionalTime The additional time to add to the current expiration
-    function addExpirationTime (uint256 tokenId, uint256 additionalTime) external onlyOwner {
+    function addExpirationTime (uint256 tokenId, uint256 additionalTime) external onlyOwner whenNotPaused {
         require(_exists(tokenId), "Token does not exist");
         require(additionalTime > 0, "Additional time must be greater than zero");
 
@@ -66,7 +67,7 @@ contract MerchantToken is ERC721, Ownable {
 
     /// @notice Invalidates a Merchant Token
     /// @param tokenId The ID of the token to invalidate
-    function invalidateToken (uint256 tokenId) external onlyOwner {
+    function invalidateToken (uint256 tokenId) external onlyOwner whenNotPaused {
         require(_exists(tokenId), "Token does not exist");
         require(!isExpired(tokenId), "Token already expired");
 
@@ -115,7 +116,7 @@ contract MerchantToken is ERC721, Ownable {
     }
 
     /// @notice Burns the Merchant Token of the caller
-    function burn () external {
+    function burn () external whenNotPaused {
         uint256 tokenId = _ownedTokenId[msg.sender];
 
         require(tokenId != 0, "You do not own a token");

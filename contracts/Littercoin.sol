@@ -81,11 +81,10 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     /// @param nonce The nonce provided by the backend
     /// @param expiry The expiry time of the signature
     /// @param signature The signature provided by the backend
-    function mint (uint256 amount, uint256 nonce, uint256 expiry, bytes memory signature) external {
+    function mint (uint256 amount, uint256 nonce, uint256 expiry, bytes memory signature) external whenNotPaused {
         require(amount > 0, "Amount must be greater than zero");
         require(block.timestamp <= expiry, "Signature has expired");
         require(!usedNonces[nonce], "Nonce already used");
-        require(!paused(), "ERC721Pausable: token transfer while paused");
 
         // Update nonce as used
         usedNonces[nonce] = true;
@@ -104,7 +103,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
             _safeMint(msg.sender, tokenId);
 
             // Initialize the transfer count for the newly minted NFT
-            transferCount[tokenId] = 0;
+            transferCount[tokenId] = 1;
         }
 
         emit Mint(msg.sender, amount);
@@ -112,7 +111,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
 
     /// @notice Burn multiple Littercoin NFTs and transfer the average ETH per NFT to the merchant
     /// @param tokenIds The IDs of the Littercoin NFTs to redeem
-    function burnLittercoin (uint256[] calldata tokenIds) external nonReentrant {
+    function burnLittercoin (uint256[] calldata tokenIds) external nonReentrant whenNotPaused {
         require(merchantToken.hasValidMerchantToken(msg.sender), "Must hold a valid Merchant Token.");
 
         // Check for Littercoin to burn
@@ -126,14 +125,16 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         uint256 contractBalance = address(this).balance;
         require(contractBalance > 0, "Not enough ETH in contract.");
 
-        require(!paused(), "ERC721Pausable: token transfer while paused");
-
-        // Validate all tokens
+        // Validate all and process each token
         for (uint256 i = 0; i < numTokens; i++) {
             uint256 tokenId = tokenIds[i];
+
             require(ownerOf(tokenId) == msg.sender, "Caller must own all tokens being redeemed.");
-            require(transferCount[tokenId] <= 2, "Token has been invalidated due to too many transfers.");
+            require(transferCount[tokenId] == 2, "Token is not in a valid state to burn.");
+
             _burn(tokenId);
+
+            delete transferCount[tokenId];
         }
 
         // Calculate the total number of eligible tokens to redeem
@@ -148,13 +149,13 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
 
     /// @notice Accepts ETH and rewards OLMRewardTokens based on the amount
     receive () external payable nonReentrant {
+        require(!paused(), "Pausable: paused");
         uint256 ethAmount = msg.value;
 
         // Get the latest ETH/USD price
         (, int256 price, , , ) = priceFeed.latestRoundData();
         require(price > 0, "Invalid price from Chainlink");
         require(priceFeed.decimals() == 8, "Unexpected price feed decimals");
-        require(!paused(), "ERC721Pausable: token transfer while paused");
 
         // Convert price to uint256 and get reward amount
         // assume $2000 for testing
@@ -188,21 +189,25 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         _unpause();
     }
 
+    function exists (uint256 tokenId) external view returns (bool) {
+        return _exists(tokenId);
+    }
+
     /// @notice Track each token transfer and increment the count
     function _beforeTokenTransfer(
         address from,
         address to,
         uint256 tokenId,
         uint256 batchSize
-    ) internal override(ERC721, ERC721Enumerable) {
+    ) internal override(ERC721, ERC721Enumerable) whenNotPaused {
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
 
-        require(!paused(), "ERC721Pausable: token transfer while paused");
-
-        // Increment the transfer count when the token is transferred
+        // Increment the transfer count when the token is transferred (not minting or burning)
+        // from === 0 is minting, to === 0 is burning
         if (from != address(0) && to != address(0)) {
+            require(transferCount[tokenId] == 1, "Invalid transfer");
+            require(merchantToken.hasValidMerchantToken(to), "Recipient must be a valid merchant");
             transferCount[tokenId] += 1;
-            require(transferCount[tokenId] <= MAX_TRANSACTIONS, "Token transfer limit exceeded.");
         }
     }
 

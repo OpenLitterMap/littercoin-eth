@@ -140,6 +140,210 @@ describe("Littercoin Smart Contract", function () {
         ).to.be.revertedWith("ERC721: transfer to the zero address");
     });
 
+    it("should initialize transferCount to 1 when Littercoin is minted", async function () {
+        const nonce = 10;
+        const amount = 1;
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = await getMintSignature(owner, user1.address, amount, nonce, expiry);
+
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+
+        // Get transferCount for tokenId 1
+        const transferCount = await littercoin.transferCount(1);
+        expect(transferCount).to.equal(1);
+    });
+
+    it("should increment transferCount to 2 when Littercoin is transferred from user to merchant", async function () {
+        // Mint Littercoin to user1
+        const nonce = 11;
+        const amount = 1;
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = await getMintSignature(owner, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+
+        // Mint Merchant Token to user2
+        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+
+        // Transfer Littercoin from user1 to user2 (merchant)
+        await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
+
+        // Get transferCount for tokenId 1
+        const transferCount = await littercoin.transferCount(1);
+        expect(transferCount).to.equal(2);
+    });
+
+    it("should not allow Littercoin to be transferred more than once", async function () {
+        const nonce = 13;
+        const amount = 1;
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = await getMintSignature(owner, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+
+        // Mint Merchant Token to user2
+        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+
+        // Transfer Littercoin from user1 to user2 (merchant)
+        await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
+
+        // Attempt to transfer Littercoin from user2 to user3
+        await expect(littercoin.connect(user2).transferFrom(user2.address, user3.address, 1))
+            .to.be.revertedWith("Invalid transfer");
+    });
+
+    it("should not allow Littercoin to be transferred to a non-merchant", async function () {
+        const nonce = 14;
+        const amount = 1;
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = await getMintSignature(owner, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+
+        // Attempt to transfer Littercoin from user1 to user2 (who is not a merchant)
+        await expect(littercoin.connect(user1).transferFrom(user1.address, user2.address, 1))
+            .to.be.revertedWith("Recipient must be a valid merchant");
+    });
+
+    it("should delete transferCount mapping after burning the Littercoin", async function () {
+        const nonce = 15;
+        const amount = 1;
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = await getMintSignature(owner, user1.address, amount, nonce, expiry);
+
+        // Mint Littercoin for User 1
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+
+        // Mint Merchant Token for User 2
+        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+
+        // Transfer Littercoin from User 1 to User 2
+        await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
+
+        // Send ETH to contract so burning can proceed
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
+
+        // Burn Littercoin
+        await littercoin.connect(user2).burnLittercoin([1]);
+
+        // Attempt to get transferCount for burned tokenId 1
+        const transferCount = await littercoin.transferCount(1);
+        expect(transferCount).to.equal(0);
+
+        // Verify that the token no longer exists
+        const tokenExists = await littercoin.exists(1);
+        expect(tokenExists).to.equal(false);
+    });
+
+    it("should not allow minting when the contract is paused", async function () {
+        // Pause the contract
+        await littercoin.connect(owner).pause();
+
+        const nonce = 16;
+        const amount = 1;
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = await getMintSignature(owner, user1.address, amount, nonce, expiry);
+
+        // Attempt to mint Littercoin
+        await expect(littercoin.connect(user1).mint(amount, nonce, expiry, signature))
+            .to.be.revertedWith("Pausable: paused");
+
+        // Unpause the contract
+        await littercoin.connect(owner).unpause();
+
+        // Now minting should work
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+    });
+
+    it("should not allow transferring Littercoin when the contract is paused", async function () {
+        const nonce = 17;
+        const amount = 1;
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = await getMintSignature(owner, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+
+        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+
+        await littercoin.connect(owner).pause();
+
+        // Attempt to transfer Littercoin from user1 to user2 (merchant)
+        await expect(littercoin.connect(user1).transferFrom(user1.address, user2.address, 1))
+            .to.be.revertedWith("Pausable: paused");
+
+        await littercoin.connect(owner).unpause();
+
+        // Now transfer should work
+        await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
+    });
+
+    it("should not allow burning Littercoin when the contract is paused", async function () {
+        const nonce = 18;
+        const amount = 1;
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = await getMintSignature(owner, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+
+        // Send ETH to contract so burning can proceed
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
+
+        // Send littercoin from user 1 to user 2
+        await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
+
+        // Pause the contract
+        await littercoin.connect(owner).pause();
+
+        // Attempt to burn Littercoin
+        await expect(littercoin.connect(user2).burnLittercoin([1]))
+            .to.be.revertedWith("Pausable: paused");
+
+        // Unpause the contract
+        await littercoin.connect(owner).unpause();
+
+        // Now burning should work
+        await littercoin.connect(user2).burnLittercoin([1]);
+    });
+
+    it("should not allow receiving ETH when the contract is paused", async function () {
+        // Pause the contract
+        await littercoin.connect(owner).pause();
+
+        // Attempt to send ETH to the contract
+        await expect(user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") }))
+            .to.be.revertedWith("Pausable: paused");
+
+        // Unpause the contract
+        await littercoin.connect(owner).unpause();
+
+        // Now sending ETH should work
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
+    });
+
+    it("should not allow non-owner to pause or unpause the contract", async function () {
+        // Attempt to pause the contract as non-owner
+        await expect(littercoin.connect(user1).pause())
+            .to.be.revertedWith("Ownable: caller is not the owner");
+
+        // Pause the contract as owner
+        await littercoin.connect(owner).pause();
+
+        // Attempt to unpause the contract as non-owner
+        await expect(littercoin.connect(user1).unpause())
+            .to.be.revertedWith("Ownable: caller is not the owner");
+
+        // Unpause the contract as owner
+        await littercoin.connect(owner).unpause();
+    });
+
+    it("should not allow transferring Littercoin to zero address", async function () {
+        const nonce = 14;
+        const amount = 1;
+        const expiry = Math.floor(Date.now() / 1000) + 3600;
+        const signature = await getMintSignature(owner, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+
+        await expect(
+            littercoin.connect(user1).transferFrom(user1.address, ethers.ZeroAddress, 1)
+        ).to.be.revertedWith("ERC721: transfer to the zero address");
+    });
+
     /**
      * Merchant Token Tests
      */

@@ -136,7 +136,7 @@ contract MerchantToken is ERC721, Ownable {
         }
     }
 
-    /// @dev Overrides the supportsInterface function to add ERC721Enumerable support
+    /// @dev Overrides the supportsInterface function to add ERC721
     function supportsInterface (bytes4 interfaceId) public view virtual override returns (bool) {
         return super.supportsInterface(interfaceId);
     }

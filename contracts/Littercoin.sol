@@ -15,8 +15,6 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { MerchantToken } from "./MerchantToken.sol";
 import { OLMRewardToken } from "./OLMRewardToken.sol";
 
-import "hardhat/console.sol";
-
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausable, EIP712 {

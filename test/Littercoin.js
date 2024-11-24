@@ -1,11 +1,11 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { keccak256, toUtf8Bytes, AbiCoder, concat } = ethers;
 
 describe("Littercoin Smart Contract", function () {
     let littercoin, rewardToken, merchantToken;
     let littercoinAddress;
     let owner, user1, user2, user3;
+
     let mockV3Aggregator;
     const decimals = 8;
     let initialPrice = ethers.parseUnits("2000", decimals);
@@ -36,10 +36,6 @@ describe("Littercoin Smart Contract", function () {
         rewardToken = await ethers.getContractAt("OLMRewardToken", rewardTokenAddress);
         merchantToken = await ethers.getContractAt("MerchantToken", merchantTokenAddress);
     });
-
-    /**
-     * Littercoin Tests
-     */
 
     // Create Littercoin
     it("should mint Littercoin tokens correctly", async function () {

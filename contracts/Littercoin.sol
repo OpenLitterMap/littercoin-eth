@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 // Import OpenZeppelin Contracts v4.9.2
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import { ERC721Consecutive } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Consecutive.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -17,21 +17,16 @@ import { OLMRewardToken } from "./OLMRewardToken.sol";
 
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausable, EIP712 {
+contract Littercoin is ERC721Consecutive, Ownable, ReentrancyGuard, Pausable, EIP712 {
 
-    using Counters for Counters.Counter;
-
-    // ID of the next Littercoin to be minted
-    Counters.Counter private _tokenCounter;
+    // Track total supply
+    uint256 private _totalSupply;
 
     // Used nonces for preventing replay attacks
     mapping(uint256 => bool) public usedNonces;
 
     // Mapping to track the number of transactions for each Littercoin NFT
     mapping(uint256 => uint8) public transferCount;
-
-    // Define a limit for the number of transactions each Littercoin can have
-    uint256 public constant MAX_TRANSACTIONS = 3;
 
     // Define a limit for the number of Littercoin tokens that can be minted at once
     uint256 public constant MAX_MINT_AMOUNT = 10;
@@ -82,19 +77,8 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         return address(merchantToken);
     }
 
-    /// @notice
-    function _hashMint (address user, uint256 amount, uint256 nonce, uint256 expiry) internal view returns (bytes32) {
-        return _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    MINT_TYPEHASH,
-                    user,
-                    amount,
-                    nonce,
-                    expiry
-                )
-            )
-        );
+    function totalSupply () public view returns (uint256) {
+        return _totalSupply;
     }
 
     /// @notice Users can mint Littercoin tokens
@@ -115,15 +99,16 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         address signer = ECDSA.recover(digest, signature);
         require(signer == owner(), "Invalid signature");
 
-        // Mint tokens for the user
+        // Calculate starting tokenId
+        uint256 startTokenId = _totalSupply + 1;
+
+        // Mint tokens in batch
+        _mintConsecutive(msg.sender, uint96(amount));
+
+        _totalSupply += amount;
+
         for (uint256 i = 0; i < amount; i++) {
-            _tokenCounter.increment();
-            uint256 tokenId = _tokenCounter.current();
-
-            // Mint tokens to the user
-            _safeMint(msg.sender, tokenId);
-
-            // Initialize the transfer count for the newly minted NFT
+            uint256 tokenId = startTokenId + i;
             transferCount[tokenId] = 1;
         }
 
@@ -138,9 +123,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         // Check for Littercoin to burn
         uint256 numTokens = tokenIds.length;
         require(numTokens > 0, "No tokens provided.");
-
-        uint256 totalSupply = totalSupply();
-        require(totalSupply > 0, "No tokens in circulation.");
+        require(_totalSupply > 0, "No tokens in circulation.");
 
         // Ensure there is more than 0 ETH in the contract
         uint256 contractBalance = address(this).balance;
@@ -158,8 +141,10 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
             delete transferCount[tokenId];
         }
 
+        _totalSupply -= numTokens;
+
         // Calculate the total number of eligible tokens to redeem
-        uint256 totalEthToTransfer = (contractBalance * numTokens) / totalSupply;
+        uint256 totalEthToTransfer = (contractBalance * numTokens) / _totalSupply;
 
         // Transfer the total ETH to the caller with reentrancy protection
         (bool success, ) = payable(msg.sender).call{value: totalEthToTransfer}("");
@@ -196,11 +181,6 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         emit Reward(msg.sender, rewardAmount);
     }
 
-    // @notice Get the current token ID
-    function getCurrentTokenId () external view returns (uint256) {
-        return _tokenCounter.current();
-    }
-
     // Owner can pause and unpause the contract
     function pause () external onlyOwner {
         _pause();
@@ -214,26 +194,59 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         return _exists(tokenId);
     }
 
+    /// @notice
+    function _hashMint (address user, uint256 amount, uint256 nonce, uint256 expiry) internal view returns (bytes32) {
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    MINT_TYPEHASH,
+                    user,
+                    amount,
+                    nonce,
+                    expiry
+                )
+            )
+        );
+    }
+
+    /// @notice Override the _baseURI function to return the base URI
+    function _ownerOf (uint256 tokenId) internal view override (ERC721) returns (address) {
+        return super._ownerOf(tokenId);
+    }
+
     /// @notice Track each token transfer and increment the count
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 tokenId,
+        uint256 firstTokenId,
         uint256 batchSize
-    ) internal override(ERC721, ERC721Enumerable) whenNotPaused {
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+    ) internal override (ERC721) whenNotPaused {
+        super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
 
         // Increment the transfer count when the token is transferred (not minting or burning)
         // from === 0 is minting, to === 0 is burning
         if (from != address(0) && to != address(0)) {
-            require(transferCount[tokenId] == 1, "Invalid transfer");
-            require(merchantToken.hasValidMerchantToken(to), "Recipient must be a valid merchant");
-            transferCount[tokenId] += 1;
+            for (uint256 i = 0; i < batchSize; i++) {
+                uint256 tokenId = firstTokenId + i;
+                require(transferCount[tokenId] == 1, "Invalid transfer");
+                require(merchantToken.hasValidMerchantToken(to), "Recipient must be a valid merchant");
+                transferCount[tokenId] += 1;
+            }
         }
     }
 
-    // Override the supportsInterface function to include ERC721Enumerable
-    function supportsInterface (bytes4 interfaceId) public view override(ERC721, ERC721Enumerable) returns (bool) {
+    /// @notice Override the `_afterTokenTransfer` function to resolve inheritance conflicts
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 firstTokenId,
+        uint256 batchSize
+    ) internal override(ERC721) {
+        super._afterTokenTransfer(from, to, firstTokenId, batchSize);
+    }
+
+    // Override the supportsInterface function to include ERC721Consecutive
+    function supportsInterface (bytes4 interfaceId) public view override (ERC721) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 }

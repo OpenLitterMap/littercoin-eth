@@ -9,14 +9,17 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 // Import Dependencies
 import { MerchantToken } from "./MerchantToken.sol";
 import { OLMRewardToken } from "./OLMRewardToken.sol";
 
+import "hardhat/console.sol";
+
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausable {
+contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausable, EIP712 {
 
     using Counters for Counters.Counter;
 
@@ -44,8 +47,11 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     // Chainlink Price Feed
     AggregatorV3Interface internal priceFeed;
 
+    // EIP-712 Domain Separator and Type Hash
+    bytes32 private constant MINT_TYPEHASH = keccak256("Mint(address user,uint256 amount,uint256 nonce,uint256 expiry)");
+
     /// @notice Contract constructor
-    constructor (address _priceFeed) ERC721("Littercoin", "LITTERX") {
+    constructor (address _priceFeed) ERC721("Littercoin", "LITTERX") EIP712("Littercoin", "1") {
         // Deploy the Reward Token and transfer ownership to this contract
         rewardToken = new OLMRewardToken();
         rewardToken.transferOwnership(address(this));
@@ -79,6 +85,21 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         return address(merchantToken);
     }
 
+    /// @notice
+    function _hashMint (address user, uint256 amount, uint256 nonce, uint256 expiry) internal view returns (bytes32) {
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    keccak256("Mint(address user,uint256 amount,uint256 nonce,uint256 expiry)"),
+                    user,
+                    amount,
+                    nonce,
+                    expiry
+                )
+            )
+        );
+    }
+
     /// @notice Users can mint Littercoin tokens
     /// @param amount The amount of tokens to mint
     /// @param nonce The nonce provided by the backend
@@ -92,9 +113,9 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         // Update nonce as used
         usedNonces[nonce] = true;
 
-        // Construct the hash to be signed by the backend
-        bytes32 messageHash = keccak256(abi.encode(msg.sender, amount, nonce, expiry));
-        address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(messageHash), signature);
+        // Construct the EIP-712 hash to be signed by the backend
+        bytes32 digest = _hashMint(msg.sender, amount, nonce, expiry);
+        address signer = ECDSA.recover(digest, signature);
         require(signer == owner(), "Invalid signature");
 
         // Mint tokens for the user

@@ -45,7 +45,6 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     // Chainlink Price Feed
     AggregatorV3Interface internal priceFeed;
 
-    // EIP-712 Domain Separator and Type Hash
     bytes32 private constant MINT_TYPEHASH = keccak256("Mint(address user,uint256 amount,uint256 nonce,uint256 expiry)");
 
     /// @notice Contract constructor
@@ -88,7 +87,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         return _hashTypedDataV4(
             keccak256(
                 abi.encode(
-                    keccak256("Mint(address user,uint256 amount,uint256 nonce,uint256 expiry)"),
+                    MINT_TYPEHASH,
                     user,
                     amount,
                     nonce,

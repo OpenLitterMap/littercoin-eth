@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/sean/solidity/littercoin/contracts/Littercoin.sol": {
-      "lastModificationDate": 1732621758073,
-      "contentHash": "de4d7ab7b0e7a4123179e1a3e5b33c0e",
+      "lastModificationDate": 1732625937045,
+      "contentHash": "0b8cc1e99be6d4cb588586bcd9f793a4",
       "sourceName": "contracts/Littercoin.sol",
       "solcConfig": {
         "version": "0.8.27",
@@ -50,8 +50,8 @@
       ]
     },
     "/Users/sean/solidity/littercoin/contracts/MerchantToken.sol": {
-      "lastModificationDate": 1732102827172,
-      "contentHash": "69126cbfc53c336ef98a24ff7870d6c3",
+      "lastModificationDate": 1732625943372,
+      "contentHash": "f63ded47821bc437436b3e7e6525a10e",
       "sourceName": "contracts/MerchantToken.sol",
       "solcConfig": {
         "version": "0.8.27",

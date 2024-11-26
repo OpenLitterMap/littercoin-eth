@@ -190,7 +190,6 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         return _tokenCounter.current();
     }
 
-    // Owner can pause and unpause the contract
     function pause () external onlyOwner {
         _pause();
     }
@@ -216,7 +215,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         if (from == address(0)) {
             // Minting
             // Prevent merchants from minting tokens
-            require(!merchantToken.hasValidMerchantToken(to), "Merchants cannot mint tokens");
+            require(!merchantToken.hasValidMerchantToken(to), "Merchants cannot mint Littercoin");
         } else if (to == address(0)) {
             // Burning
             // Only allow merchants to burn tokens

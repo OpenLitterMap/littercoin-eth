@@ -124,6 +124,14 @@ contract MerchantToken is ERC721, Ownable, Pausable {
         _burn(tokenId);
     }
 
+    function pause () external onlyOwner {
+        _pause();
+    }
+
+    function unpause () external onlyOwner {
+        _unpause();
+    }
+
     /// @dev Overrides the _beforeTokenTransfer hook to prevent transfers
     function _beforeTokenTransfer (address from, address to, uint256 tokenId, uint256 batchSize) internal override {
         super._beforeTokenTransfer(from, to, tokenId, batchSize);

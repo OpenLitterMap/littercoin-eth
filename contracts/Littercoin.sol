@@ -27,11 +27,8 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     // Used nonces for preventing replay attacks
     mapping(uint256 => bool) public usedNonces;
 
-    // Mapping to track the number of transactions for each Littercoin NFT
-    mapping(uint256 => uint8) public transferCount;
-
-    // Define a limit for the number of transactions each Littercoin can have
-    uint256 public constant MAX_TRANSACTIONS = 3;
+    // Mapping to check if each Littercoin has been transferred from a User to a Merchant
+    mapping(uint256 => bool) public tokenTransferred;
 
     // Define a limit for the number of Littercoin tokens that can be minted at once
     uint256 public constant MAX_MINT_AMOUNT = 10;
@@ -122,9 +119,6 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
 
             // Mint tokens to the user
             _safeMint(msg.sender, tokenId);
-
-            // Initialize the transfer count for the newly minted NFT
-            transferCount[tokenId] = 1;
         }
 
         emit Mint(msg.sender, amount);
@@ -149,13 +143,8 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         // Validate all and process each token
         for (uint256 i = 0; i < numTokens; i++) {
             uint256 tokenId = tokenIds[i];
-
             require(ownerOf(tokenId) == msg.sender, "Caller must own all tokens being redeemed.");
-            require(transferCount[tokenId] == 2, "Token is not in a valid state to burn.");
-
             _burn(tokenId);
-
-            delete transferCount[tokenId];
         }
 
         // Calculate the total number of eligible tokens to redeem
@@ -223,12 +212,28 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     ) internal override(ERC721, ERC721Enumerable) whenNotPaused {
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
 
-        // Increment the transfer count when the token is transferred (not minting or burning)
         // from === 0 is minting, to === 0 is burning
-        if (from != address(0) && to != address(0)) {
-            require(transferCount[tokenId] == 1, "Invalid transfer");
+        if (from == address(0)) {
+            // Minting
+            // Prevent merchants from minting tokens
+            require(!merchantToken.hasValidMerchantToken(to), "Merchants cannot mint tokens");
+        } else if (to == address(0)) {
+            // Burning
+            // Only allow merchants to burn tokens
+            require(merchantToken.hasValidMerchantToken(from), "Only merchants can burn tokens");
+        } else {
+            // Transferring
+            // Ensure the token hasn't been transferred before
+            require(!tokenTransferred[tokenId], "Token has already been transferred");
+
+            // Ensure sender is not a merchant
+            require(!merchantToken.hasValidMerchantToken(from), "Merchants cannot transfer tokens");
+
+            // Ensure recipient is a valid merchant
             require(merchantToken.hasValidMerchantToken(to), "Recipient must be a valid merchant");
-            transferCount[tokenId] += 1;
+
+            // Mark the token as transferred
+            tokenTransferred[tokenId] = true;
         }
     }
 

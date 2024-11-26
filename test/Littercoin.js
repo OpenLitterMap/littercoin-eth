@@ -37,7 +37,10 @@ describe("Littercoin Smart Contract", function () {
         merchantToken = await ethers.getContractAt("MerchantToken", merchantTokenAddress);
     });
 
-    // Create Littercoin
+    /**
+     * Littercoin Tests
+     */
+
     it("should mint Littercoin tokens correctly", async function () {
         const nonce = 1;
         const amount = 10;
@@ -54,13 +57,6 @@ describe("Littercoin Smart Contract", function () {
         expect(userBalance).to.equal(amount);
     });
 
-    // Create Littercoin - Validation
-    it("should not allow non-owner to mint Merchant Tokens", async function () {
-        await expect(merchantToken.connect(user1).mint(user2.address, merchantTokenExpiry))
-            .to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    // Create Littercoin - Validation
     it("should not mint Littercoin if the amount is zero", async function () {
         const amount = 0;
         const nonce = 2;
@@ -81,7 +77,6 @@ describe("Littercoin Smart Contract", function () {
             .to.be.revertedWith("Amount must be greater than zero and less than 10");
     });
 
-    // Create Littercoin - Validation
     it("should not allow minting Littercoin with an invalid signature", async function () {
         const nonce = 7;
         const amount = 10;
@@ -94,7 +89,6 @@ describe("Littercoin Smart Contract", function () {
             .to.be.revertedWith("Invalid signature");
     });
 
-    // Create Littercoin - Validation
     it("should not allow minting Littercoin with an expired signature", async function () {
         const nonce = 8;
         const amount = 10;
@@ -106,7 +100,6 @@ describe("Littercoin Smart Contract", function () {
             .to.be.revertedWith("Signature has expired");
     });
 
-    // Create Littercoin - Validation
     it("should not allow minting Littercoin with a reused nonce", async function () {
         const nonce = 9;
         const amount = 10;
@@ -134,21 +127,8 @@ describe("Littercoin Smart Contract", function () {
         ).to.be.revertedWith("ERC721: transfer to the zero address");
     });
 
-    it("should initialize transferCount to 1 when Littercoin is minted", async function () {
-        const nonce = 10;
-        const amount = 1;
-        const expiry = Math.floor(Date.now() / 1000) + 3600;
-        const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
-
-        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
-
-        // Get transferCount for tokenId 1
-        const transferCount = await littercoin.transferCount(1);
-        expect(transferCount).to.equal(1);
-    });
-
-    it("should increment transferCount to 2 when Littercoin is transferred from user to merchant", async function () {
-        // Mint Littercoin to user1
+    it("should update tokenTransferred to True Littercoin is transferred from user to merchant", async function () {
+        // Mint Littercoin for user1
         const nonce = 11;
         const amount = 1;
         const expiry = Math.floor(Date.now() / 1000) + 3600;
@@ -162,8 +142,8 @@ describe("Littercoin Smart Contract", function () {
         await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
 
         // Get transferCount for tokenId 1
-        const transferCount = await littercoin.transferCount(1);
-        expect(transferCount).to.equal(2);
+        const tokenTransferred = await littercoin.tokenTransferred(1);
+        expect(tokenTransferred).to.equal(true);
     });
 
     it("should not allow Littercoin to be transferred more than once", async function () {
@@ -181,7 +161,7 @@ describe("Littercoin Smart Contract", function () {
 
         // Attempt to transfer Littercoin from user2 to user3
         await expect(littercoin.connect(user2).transferFrom(user2.address, user3.address, 1))
-            .to.be.revertedWith("Invalid transfer");
+            .to.be.revertedWith("Token has already been transferred");
     });
 
     it("should not allow Littercoin to be transferred to a non-merchant", async function () {
@@ -194,36 +174,6 @@ describe("Littercoin Smart Contract", function () {
         // Attempt to transfer Littercoin from user1 to user2 (who is not a merchant)
         await expect(littercoin.connect(user1).transferFrom(user1.address, user2.address, 1))
             .to.be.revertedWith("Recipient must be a valid merchant");
-    });
-
-    it("should delete transferCount mapping after burning the Littercoin", async function () {
-        const nonce = 15;
-        const amount = 1;
-        const expiry = Math.floor(Date.now() / 1000) + 3600;
-        const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
-
-        // Mint Littercoin for User 1
-        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
-
-        // Mint Merchant Token for User 2
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
-
-        // Transfer Littercoin from User 1 to User 2
-        await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
-
-        // Send ETH to contract so burning can proceed
-        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
-
-        // Burn Littercoin
-        await littercoin.connect(user2).burnLittercoin([1]);
-
-        // Attempt to get transferCount for burned tokenId 1
-        const transferCount = await littercoin.transferCount(1);
-        expect(transferCount).to.equal(0);
-
-        // Verify that the token no longer exists
-        const tokenExists = await littercoin.exists(1);
-        expect(tokenExists).to.equal(false);
     });
 
     it("should not allow minting when the contract is paused", async function () {
@@ -352,6 +302,11 @@ describe("Littercoin Smart Contract", function () {
         expect(user2Balance).to.equal(1);
     });
 
+    it("should not allow non-owner to mint Merchant Tokens", async function () {
+        await expect(merchantToken.connect(user1).mint(user2.address, merchantTokenExpiry))
+            .to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
     // Merchant Token Holder can send Littercoin to the Smart Contract and get Eth out
     it("should allow only users with Merchant Token to redeem Littercoin", async function () {
         // user1 sends 1 ETH to the Littercoin contract
@@ -442,9 +397,6 @@ describe("Littercoin Smart Contract", function () {
     });
 
     it("should revert redeeming Littercoin if contract has insufficient ETH", async function () {
-        // Mint Merchant Token to user1
-        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
-
         // Mint Littercoin for user1
         const nonce = 5;
         const amount = 1;
@@ -452,8 +404,14 @@ describe("Littercoin Smart Contract", function () {
         const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
         await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
 
+        // Mint Merchant Token for user2
+        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+
+        // Send littercoin from user1 to user 2
+        await littercoin.connect(user1)["safeTransferFrom(address,address,uint256)"](user1.address, user2.address, 1);
+
         // Attempt to redeem Littercoin without sufficient ETH, expecting a revert
-        await expect(littercoin.connect(user1).burnLittercoin([1], { gasLimit: 1000000 }))
+        await expect(littercoin.connect(user2).burnLittercoin([1], { gasLimit: 1000000 }))
             .to.be.revertedWith("Not enough ETH in contract.");
     });
 
@@ -473,19 +431,21 @@ describe("Littercoin Smart Contract", function () {
         // Set Merchant Token expiry to 1 hour from now using blockchain time
         const merchantTokenExpiry = currentTimestamp + 3600; // 1 hour from now
 
-        // Mint the merchant token
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
-
-        // Mint Littercoin for user2
+        // Mint Littercoin for user1
         const nonce = 6;
         const amount = 1;
         const expiry = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-        const signature = await getMintSignature(owner, littercoinAddress, user2.address, amount, nonce, expiry);
-        await littercoin.connect(user2).mint(amount, nonce, expiry, signature);
+        const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+
+        // Mint the merchant token for user2
+        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
 
         // Fast forward time by 2 hours to expire the Merchant Token
         await ethers.provider.send("evm_increaseTime", [3 * 3600]); // Increase time by 3 hours
         await ethers.provider.send("evm_mine"); // Mine a new block to apply the time increase
+
+        const latestBlock = await ethers.provider.getBlock('latest');
 
         // Verify that the Merchant Token is expired
         const tokenId = await merchantToken.getTokenIdByOwner(user2.address);
@@ -613,101 +573,4 @@ describe("Littercoin Smart Contract", function () {
         // Generate the signature using EIP-712
         return await signer.signTypedData(domain, types, value);
     }
-
-    // Testing code for EIP-712
-    // const chainId = BigInt((await owner.provider.getNetwork()).chainId);
-    // console.log('Chain ID (test):', chainId);
-    //
-    // const chainIdFromContract = await littercoin.getChainId();
-    // console.log('Chain ID (contract):', chainIdFromContract);
-    //
-    // expect(chainId).to.equal(chainIdFromContract);
-    //
-    // // Compute the domain separator manually
-    // const EIP712DomainTypeHash = keccak256(
-    //     toUtf8Bytes("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
-    // );
-    //
-    // const nameHash = keccak256(toUtf8Bytes("Littercoin"));
-    // const versionHash = keccak256(toUtf8Bytes("1"));
-    //
-    // const abiCoder = new AbiCoder();
-    //
-    // const domainSeparator = keccak256(
-    //     abiCoder.encode(
-    //         ["bytes32", "bytes32", "bytes32", "uint256", "address"],
-    //         [EIP712DomainTypeHash, nameHash, versionHash, chainId, await littercoin.getAddress()]
-    //     )
-    // );
-    //
-    // console.log('Domain Separator (test - manual):', domainSeparator);
-    //
-    // const domainSeparatorFromContract = await littercoin.getDomainSeparator();
-    // console.log('Domain Separator (contract):', domainSeparatorFromContract);
-    //
-    // expect(domainSeparator).to.equal(domainSeparatorFromContract);
-    //
-    // const domain = {
-    //     name: "Littercoin",
-    //     version: "1",
-    //     chainId: chainId,
-    //     verifyingContract: await littercoin.getAddress(),
-    // };
-    //
-    // const types = {
-    //     Mint: [
-    //         { name: "user", type: "address" },
-    //         { name: "amount", type: "uint256" },
-    //         { name: "nonce", type: "uint256" },
-    //         { name: "expiry", type: "uint256" },
-    //     ],
-    // };
-    //
-    // const value = {
-    //     user: user1.address,
-    //     amount: BigInt(amount),
-    //     nonce: BigInt(nonce),
-    //     expiry: BigInt(expiry),
-    // };
-    //
-    // // Compute the type hash
-    // const typeHash = keccak256(toUtf8Bytes("Mint(address user,uint256 amount,uint256 nonce,uint256 expiry)"));
-    //
-    // // Compute the message hash
-    // const messageHash = keccak256(
-    //     abiCoder.encode(
-    //         ["bytes32", "address", "uint256", "uint256", "uint256"],
-    //         [typeHash, value.user, value.amount, value.nonce, value.expiry]
-    //     )
-    // );
-    //
-    // console.log('Message Hash (test):', messageHash);
-    //
-    // // Compute the digest
-    // const digestFromTest = keccak256(
-    //     concat([toUtf8Bytes("\x19\x01"), domainSeparator, messageHash])
-    // );
-    //
-    // console.log('Digest (test):', digestFromTest);
-    //
-    // // Get the digest from the contract
-    // const digestFromContract = await littercoin.hashMintExternal(
-    //     value.user,
-    //     value.amount,
-    //     value.nonce,
-    //     value.expiry
-    // );
-    // console.log('Digest (contract):', digestFromContract);
-    //
-    // expect(digestFromTest).to.equal(digestFromContract);
-    //
-    // // Generate the signature using ethers.js v6
-    // const signature = await owner.signTypedData(domain, types, value);
-    // console.log('Signature:', signature);
-    //
-    // // Recover the signer in test code
-    // const recoveredSigner = ethers.verifyTypedData(domain, types, value, signature);
-    // console.log('Recovered Signer (test):', recoveredSigner);
-    //
-    // expect(recoveredSigner).to.equal(owner.address);
 });

@@ -6,26 +6,100 @@
 
 ## What is Littercoin?
 
-Littercoin turns litter cleanup into crypto.
+Littercoin is a token that turns environmental
+data collection into real economic value — but only
+within a zero-waste economy.
 
-Users earn Littercoin by uploading litter data to
-[OpenLitterMap](https://openlittermap.com).
-100 photos = 1 Littercoin.
-Each Littercoin is an NFT backed by real ETH.
+Every Littercoin is an NFT backed by real ETH. You earn
+it by collecting and documenting litter data on
+[OpenLitterMap](https://openlittermap.com), a
+UN-recognized Digital Public Good.
 
-Littercoin can only be spent with approved
-zero-waste merchants — businesses that don't
-use plastic. Merchants burn Littercoin to
-withdraw ETH from the pool.
+Littercoin is different. You cannot send it to
+anyone. The only thing you can do with Littercoin is
+spend it with verified ecomerchants — zero-waste
+businesses that we approve of, who don't use plastic.
 
-There is no ICO, no pre-mine, and no exchanges.
+If a Zero Waste Store or Ecomerchant wants new
+customers, they need to apply for a MerchantNFT.
+A Valid Merchant Token is needed to accept Littercoin.
+You can only send Littercoin to people who have a valid MerchantNFT.
 
-## How It Works
+Merchants with a Valid Token can send Littercoin to the Smart Contract in exchange for ETH.
+
+Littercoin gets its value from donations. If people
+send ETH to the contract, the value of Littercoin grows.
+Donations are are rewarded with OLMThankYouTokens — 1 OLMTY for every $1 of ETH.
+
+Littercoin intends to be unlike most cryptos. There is no ICO,
+no pre-mine, and no exchanges. Littercoin cannot be
+bought, sold, or traded. It can only be earned & spent
+with a zero-waste merchant. Each Littercoin has a lifecycle of
+exactly 3 transactions. Earn, Spend, Burn.
+Any other tx will invalidate the token.
+
+## Why does the data matter?
+
+Every upload to OpenLitterMap is a geotagged,
+categorized environmental observation — structured
+data that municipalities, academics, and
+community groups can use to monitor pollution patterns,
+enforce taxes, educate society, allocate resources, and measure policy outcomes & behaviour trends.
+
+OpenLitterMap has 500,000+ observations. 110+ countries. Cited in 100+
+academic publications. Littercoin turns this data contribution into economic worth.
+
+## Who earns Littercoin?
+
+Users earn Littercoin by uploading verified
+litter data to OpenLitterMap.
+100 uploads = 1 Littercoin.
+
+The backend signs an EIP-712 message authorizing the
+mint. The user submits it on-chain. No middleman
+decides your balance — the signature proves you
+earned it.
+
+## How does it work?
+
+Every Littercoin has exactly 3 transactions:
+
+```
+  1. MINT             2. TRANSFER          3. BURN
+  -----              ----------           -----
+
+  User collects       User sends           Merchant burns
+  litter data,        Littercoin to        Littercoin and
+  uploads to          an approved          receives ETH
+  OpenLitterMap       zero-waste           from the pool
+                      merchant
+  Backend signs       (one time only)      4.20% burn tax
+  EIP-712 message                          goes to platform
+  User claims
+  on-chain
+  (max 10 per tx)
+```
+
+The contract enforces every rule:
+
+- **Merchants cannot mint.** If you hold a valid
+  Merchant Token, the contract blocks you from minting.
+- **Users can only transfer to merchants.** Each token
+  can be transferred exactly once, and only to an
+  address with a valid (non-expired) Merchant Token.
+- **Only merchants can burn.** Burning redeems
+  proportional ETH from the pool.
+- **Merchants cannot transfer.** Once a merchant
+  receives Littercoin, they can only burn it.
+
+Any transfer that violates these rules is rejected.
+
+## How does it have value?
 
 ```
   DONORS             USERS              MERCHANTS
     |                  |                    |
-    | Send ETH         | Pick up litter,   |
+    | Send ETH         | Collect data,     |
     | to contract      | upload to OLM,    |
     v                  | earn Littercoin    |
                        v                    |
@@ -34,7 +108,7 @@ There is no ICO, no pre-mine, and no exchanges.
   |         Littercoin Contract             |
   |         (ETH Pool)                      |
   |                                         |
-  |   Pool Balance ÷ Supply                 |
+  |   Pool Balance / Total Supply           |
   |   = Value Per Token                     |
   |                                         |
   +--------------------+--------------------+
@@ -44,35 +118,49 @@ There is no ICO, no pre-mine, and no exchanges.
                        | to merchant        | for ETH
                        v                    v
                     MERCHANT           ETH PAYOUT
-                    WALLET          95.8% merchant
-                                     4.2% platform
+                    WALLET          95.80% merchant
+                                     4.20% platform
 ```
 
-More donations = higher token value =
-stronger incentive to pick up litter.
+Anyone can donate ETH to the contract. When they do,
+donors receive OLM Thank You Tokens ($1 donated = 1
+OLMTY) as a receipt.
 
-## Token Lifecycle
+The ETH pool backs every Littercoin in circulation.
+More donations mean a higher value per token, which
+means a stronger incentive to collect data.
 
-Each Littercoin has exactly 3 transactions:
+When a merchant burns Littercoin, they receive
+their proportional share of the pool minus a 4.20%
+platform fee.
+
+## Zero-waste merchants
+
+Not just any business can accept Littercoin. Merchants
+must be approved zero-waste businesses — businesses
+that don't use plastic.
 
 ```
-  1. MINT            2. TRANSFER         3. BURN
-  --------           -----------         ------
+  1. PAY FEE          2. ADMIN APPROVES    3. USE / EXPIRE
+  --------            ----------------     ---------------
 
-  Backend signs      User sends          Merchant burns
-  EIP-712 msg        Littercoin          token, gets
-  User claims        to a merchant       proportional
-  on-chain           (one time only)     ETH from pool
-  (max 10)
+  Merchant pays       Admin mints          Merchant can
+  $20 in ETH          soulbound token      receive + burn
+  (via Chainlink      with expiry date     Littercoin
+  price feed)
+                      Admin can also:      After expiry,
+                      - Extend expiry      merchant can
+                      - Invalidate         still burn held
+                                           tokens but
+                                           cannot receive
+                                           new ones
 ```
 
-Any transfer that violates these rules
-is rejected by the contract.
+The Merchant Token is soulbound (non-transferable),
+limited to one per address, and has an expiration date.
+This means merchant status must be actively maintained.
 
-## Revenue Model
-
-The platform earns passive income
-through two mechanisms:
+## Revenue model
 
 ```
   BURN TAX (4.20%)
@@ -126,27 +214,12 @@ through two mechanisms:
 | **OLMThankYouToken** | ERC-20 | Minted when ETH is donated. 1 OLMTY per $1 USD (via Chainlink). |
 | **MockV3Aggregator** | Test only | Mock Chainlink ETH/USD price feed. |
 
-## Merchant Token Lifecycle
-
-```
-  1. PAY FEE          2. ADMIN APPROVES    3. USE / EXPIRE
-  --------            ----------------     ---------------
-
-  Merchant pays       Admin mints          Merchant can
-  $20 in ETH          soulbound token      receive + burn
-  (via Chainlink)     with expiry date     Littercoin
-
-                      Admin can also:
-                      - Extend expiry
-                      - Invalidate
-```
-
 ## Roles
 
 | Role | Can Do | Cannot Do |
 |---|---|---|
-| **User** | Mint Littercoin (with signature), transfer to merchants, donate ETH | Burn Littercoin, mint while holding a Merchant Token |
-| **Merchant** | Receive Littercoin, burn for ETH (minus 4.20% tax) | Mint Littercoin, transfer Littercoin |
+| **User** | Mint Littercoin (with signature), transfer to merchants, donate ETH | Burn Littercoin, mint while holding a valid Merchant Token |
+| **Merchant** | Receive Littercoin (while valid), burn for ETH (minus 4.20% tax) | Mint Littercoin, transfer Littercoin |
 | **Admin** | Approve/invalidate/renew merchants, sign mints, pause contracts | — |
 
 ## Development
@@ -162,7 +235,7 @@ through two mechanisms:
 npm install
 ```
 
-### Build and Test
+### Build and test
 
 ```bash
 npx hardhat compile
@@ -170,14 +243,13 @@ npx hardhat test
 npx hardhat test --grep "burn tax"
 ```
 
-### Tech Stack
+### Tech stack
 
 - **Solidity** 0.8.27 (Cancun EVM)
 - **OpenZeppelin** Contracts v5
 - **Chainlink** price feed (ETH/USD)
 - **Hardhat** with hardhat-toolbox
 - **Tests**: JavaScript (Mocha/Chai), ethers.js v6
-- **48 tests** covering all flows
 
 ## License
 

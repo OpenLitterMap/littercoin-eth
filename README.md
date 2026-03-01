@@ -49,3 +49,127 @@ The final challenge is getting crypto into the smart contract to give littercoin
 By sending crypto to the Smart Contract, users are rewarded with OLMRewardTokens. For every $1 worth of crypto, users
 receive 1 OLMRewardToken. These do not have any purpose or value yet other than to give people a receipt and thanks
 for their support. Stay tuned to see what's next!
+
+## How the System Works
+
+### Smart Contract Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Littercoin Contract                         │
+│                     (ERC-721 NFT + ETH Pool)                   │
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │  Mint Logic  │  │  Transfer Rules  │  │  Burn + Redeem   │  │
+│  │  (EIP-712)   │  │  (User→Merchant) │  │  (ETH payout)    │  │
+│  └──────────────┘  └──────────────────┘  └──────────────────┘  │
+│                                                                 │
+│  Deploys & Owns:             Deploys (Admin Owns):             │
+│  ┌──────────────────┐        ┌──────────────────┐              │
+│  │ OLMRewardToken   │        │ MerchantToken    │              │
+│  │ (ERC-20)         │        │ (Soulbound NFT)  │              │
+│  └──────────────────┘        └──────────────────┘              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Littercoin Token Lifecycle (3 Transactions)
+
+Each Littercoin NFT has exactly 3 transactions in its lifetime:
+
+```
+  ┌──────────┐         ┌──────────┐         ┌──────────────────┐
+  │  1. MINT │         │2.TRANSFER│         │     3. BURN      │
+  │          │         │          │         │                  │
+  │ Backend  │         │ User     │         │ Merchant sends   │
+  │ signs    ├────────►│ sends to ├────────►│ to contract,     │
+  │ EIP-712, │         │ merchant │         │ receives ETH     │
+  │ user     │         │          │         │                  │
+  │ claims   │         │          │         │ ETH = pool *     │
+  │          │         │          │         │ tokens / supply  │
+  └──────────┘         └──────────┘         └──────────────────┘
+       │                    │                        │
+  100 photos on        Only to valid            Proportional
+  OpenLitterMap        merchant token           share of ETH
+  = 1 Littercoin       holders                  pool
+```
+
+### ETH Pool and Value Flow
+
+```
+                    ┌──────────────────────┐
+                    │  Littercoin Contract  │
+                    │     (ETH Pool)       │
+                    │                      │
+  Supporters ──────►│  ETH Balance: $X     │◄────── Value grows
+  send ETH          │                      │        as more ETH
+                    │  Total Supply: N     │        is donated
+  Get back:         │  tokens              │
+  OLMRewardTokens   │                      │  Merchants burn:
+  ($1 = 1 OLMRT)    │  Value per token:    │  Get ETH out
+                    │  $X / N              │──────► ETH payout
+                    │                      │
+                    └──────────────────────┘
+
+  Example:
+  ┌─────────────────────────────────────────────────────────┐
+  │  Pool: 10 ETH ($20,000)    Supply: 100 Littercoin      │
+  │  Each Littercoin = $200                                 │
+  │                                                         │
+  │  Merchant burns 5 tokens → receives 0.5 ETH ($1,000)   │
+  │  Remaining: 9.5 ETH, 95 tokens → still $200 each       │
+  └─────────────────────────────────────────────────────────┘
+```
+
+### Merchant Token System
+
+```
+  ┌──────────┐     ┌───────────────┐     ┌─────────────────┐
+  │  Admin   │     │ MerchantToken │     │    Merchant     │
+  │ (Owner)  │     │  (Soulbound)  │     │                 │
+  │          │     │               │     │ - Can receive   │
+  │ Approves ├────►│ Mint with     ├────►│   Littercoin    │
+  │ merchant │     │ expiry date   │     │ - Can burn for  │
+  │          │     │ (12 months)   │     │   ETH           │
+  │ Can also │     │               │     │ - Cannot mint   │
+  │ renew or │     │ Non-          │     │   Littercoin    │
+  │ revoke   │     │ transferable  │     │ - Cannot trade  │
+  └──────────┘     └───────────────┘     └─────────────────┘
+
+  Merchant Token States:
+  ┌─────────┐  mint   ┌────────┐  time   ┌─────────┐
+  │  None   ├────────►│ Active ├────────►│ Expired │
+  └─────────┘         └───┬────┘         └────┬────┘
+                          │ revoke            │
+                          ▼                   │ renew
+                     ┌─────────┐              │
+                     │ Revoked │◄─────────────┘
+                     └─────────┘       (admin adds time)
+```
+
+### Role-Based Permissions
+
+```
+  ┌───────────────────────────────────────────────────────┐
+  │                    USERS                              │
+  │  - Mint Littercoin (with backend signature)           │
+  │  - Transfer Littercoin to merchants                   │
+  │  - Send ETH to contract (receive OLMRewardTokens)     │
+  │  - CANNOT burn Littercoin                             │
+  │  - CANNOT hold a Merchant Token and mint Littercoin   │
+  └───────────────────────────────────────────────────────┘
+
+  ┌───────────────────────────────────────────────────────┐
+  │                   MERCHANTS                           │
+  │  - Receive Littercoin from users                      │
+  │  - Burn Littercoin for proportional ETH               │
+  │  - CANNOT mint Littercoin                             │
+  │  - CANNOT transfer Littercoin to others               │
+  └───────────────────────────────────────────────────────┘
+
+  ┌───────────────────────────────────────────────────────┐
+  │                    ADMIN                              │
+  │  - Mint/revoke/renew Merchant Tokens                  │
+  │  - Sign EIP-712 mint authorizations                   │
+  │  - Pause/unpause contracts                            │
+  └───────────────────────────────────────────────────────┘
+```

@@ -99,6 +99,15 @@ contract MerchantToken is ERC721, Ownable, Pausable {
         return true;
     }
 
+    /// @notice Checks if an address holds a Merchant Token (regardless of expiry)
+    /// @param user The address to check
+    /// @return bool True if the user holds a Merchant Token, false otherwise
+    function hasMerchantToken (address user) public view returns (bool) {
+        uint256 tokenId = _ownedTokenId[user];
+        if (tokenId == 0) return false;
+        return _exists(tokenId);
+    }
+
     function getExpirationTimestamp (uint256 tokenId) public view returns (uint256) {
         require(_exists(tokenId), "Token does not exist");
 

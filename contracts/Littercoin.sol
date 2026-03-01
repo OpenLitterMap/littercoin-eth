@@ -100,7 +100,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     /// @param expiry The expiry time of the signature
     /// @param signature The signature provided by the backend
     function mint (uint256 amount, uint256 nonce, uint256 expiry, bytes memory signature) external whenNotPaused {
-        require(amount > 0 && amount <= MAX_MINT_AMOUNT, "Amount must be greater than zero and less than 10");
+        require(amount > 0 && amount <= MAX_MINT_AMOUNT, "Amount must be between 1 and 10");
         require(block.timestamp <= expiry, "Signature has expired");
         require(!usedNonces[nonce], "Nonce already used");
 
@@ -127,7 +127,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     /// @notice Burn multiple Littercoin NFTs and transfer the average ETH per NFT to the merchant
     /// @param tokenIds The IDs of the Littercoin NFTs to redeem
     function burnLittercoin (uint256[] calldata tokenIds) external nonReentrant whenNotPaused {
-        require(merchantToken.hasValidMerchantToken(msg.sender), "Must hold a valid Merchant Token.");
+        require(merchantToken.hasMerchantToken(msg.sender), "Must hold a Merchant Token.");
 
         // Check for Littercoin to burn
         uint256 numTokens = tokenIds.length;
@@ -149,6 +149,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
 
         // Calculate the total number of eligible tokens to redeem
         uint256 totalEthToTransfer = (contractBalance * numTokens) / totalSupply;
+        require(totalEthToTransfer > 0, "ETH amount too small to redeem");
 
         // Transfer the total ETH to the caller with reentrancy protection
         (bool success, ) = payable(msg.sender).call{value: totalEthToTransfer}("");
@@ -158,14 +159,14 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     }
 
     /// @notice Accepts ETH and rewards OLMRewardTokens based on the amount
-    receive () external payable nonReentrant {
-        require(!paused(), "Pausable: paused");
+    receive () external payable nonReentrant whenNotPaused {
         uint256 ethAmount = msg.value;
 
         // Get the latest ETH/USD price
-        (, int256 price, , , ) = priceFeed.latestRoundData();
+        (, int256 price, , uint256 updatedAt, ) = priceFeed.latestRoundData();
         require(price > 0, "Invalid price from Chainlink");
         require(priceFeed.decimals() == 8, "Unexpected price feed decimals");
+        require(block.timestamp - updatedAt < 3600, "Stale price feed");
 
         // Convert price to uint256 and get reward amount
         // assume $2000 for testing
@@ -177,7 +178,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         // ethPriceUsd has 8 decimals, so divide by 10^8 to get the actual USD value
         // ethAmount is in wei (10^18), so divide by 10^18 to convert to ETH
         // rewardAmount = ethAmount (in USD) * (1 OLMRewardToken / 1 USD)
-        uint256 rewardAmount = (ethAmount * ethPriceUsd) / 1e26;
+        uint256 rewardAmount = (ethAmount * ethPriceUsd) / 1e8;
 
         // Mint OLM Reward Tokens to the sender
         rewardToken.mint(msg.sender, rewardAmount);
@@ -219,7 +220,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         } else if (to == address(0)) {
             // Burning
             // Only allow merchants to burn tokens
-            require(merchantToken.hasValidMerchantToken(from), "Only merchants can burn tokens");
+            require(merchantToken.hasMerchantToken(from), "Only merchants can burn tokens");
         } else {
             // Transferring
             // Ensure the token hasn't been transferred before

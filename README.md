@@ -4,115 +4,150 @@
 
 > **Status: In development — not yet audited.**
 
-## Overview
+## What is Littercoin?
 
-Littercoin tokenises the production of geographic information. Users earn Littercoin by contributing litter data to [OpenLitterMap](https://openlittermap.com) — upload 100 photos and receive 1 Littercoin. Each Littercoin is an ERC-721 NFT with a constrained 3-transaction lifecycle: **mint, transfer, burn**.
+Littercoin turns litter cleanup into crypto.
 
-Littercoin gets its value from an ETH pool held in the smart contract. If the pool holds $20,000 worth of ETH and 100 Littercoin are in circulation, each is worth $200. Littercoin can only be spent with pre-approved zero-waste merchants who do not use plastic.
+Users earn Littercoin by uploading litter data to
+[OpenLitterMap](https://openlittermap.com).
+100 photos = 1 Littercoin.
+Each Littercoin is an NFT backed by real ETH.
+
+Littercoin can only be spent with approved
+zero-waste merchants — businesses that don't
+use plastic. Merchants burn Littercoin to
+withdraw ETH from the pool.
 
 There is no ICO, no pre-mine, and no exchanges.
 
+## How It Works
+
+```
+  DONORS             USERS              MERCHANTS
+    |                  |                    |
+    | Send ETH         | Pick up litter,   |
+    | to contract      | upload to OLM,    |
+    v                  | earn Littercoin    |
+                       v                    |
+  +--------------------+--------------------+
+  |                                         |
+  |         Littercoin Contract             |
+  |         (ETH Pool)                      |
+  |                                         |
+  |   Pool Balance ÷ Supply                 |
+  |   = Value Per Token                     |
+  |                                         |
+  +--------------------+--------------------+
+                       |                    |
+                       | Transfer           | Burn
+                       | Littercoin         | Littercoin
+                       | to merchant        | for ETH
+                       v                    v
+                    MERCHANT           ETH PAYOUT
+                    WALLET          95.8% merchant
+                                     4.2% platform
+```
+
+More donations = higher token value =
+stronger incentive to pick up litter.
+
 ## Token Lifecycle
 
-Each Littercoin NFT has exactly 3 transactions in its lifetime:
+Each Littercoin has exactly 3 transactions:
 
 ```
-  ┌──────────┐         ┌──────────┐         ┌──────────────────┐
-  │  1. MINT │         │2.TRANSFER│         │     3. BURN      │
-  │          │         │          │         │                  │
-  │ Backend  │         │ User     │         │ Merchant sends   │
-  │ signs    ├────────►│ sends to ├────────►│ to contract,     │
-  │ EIP-712, │         │ merchant │         │ receives ETH     │
-  │ user     │         │ (once)   │         │                  │
-  │ claims   │         │          │         │ ETH = pool *     │
-  │ (max 10) │         │          │         │ tokens / supply  │
-  └──────────┘         └──────────┘         └──────────────────┘
+  1. MINT            2. TRANSFER         3. BURN
+  --------           -----------         ------
+
+  Backend signs      User sends          Merchant burns
+  EIP-712 msg        Littercoin          token, gets
+  User claims        to a merchant       proportional
+  on-chain           (one time only)     ETH from pool
+  (max 10)
 ```
 
-Any transfer that violates these rules is rejected by the contract.
+Any transfer that violates these rules
+is rejected by the contract.
 
-## Architecture
+## Revenue Model
 
-### Contract Overview
+The platform earns passive income
+through two mechanisms:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Littercoin Contract                         │
-│                     (ERC-721 NFT + ETH Pool)                   │
-│                                                                 │
-│  ┌──────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
-│  │  Mint Logic  │  │  Transfer Rules  │  │  Burn + Redeem   │  │
-│  │  (EIP-712)   │  │  (User→Merchant) │  │  (ETH payout)    │  │
-│  └──────────────┘  └──────────────────┘  └──────────────────┘  │
-│                                                                 │
-│  Deploys & Owns:             Deploys (Admin Owns):             │
-│  ┌──────────────────┐        ┌──────────────────┐              │
-│  │ OLMRewardToken   │        │ MerchantToken    │              │
-│  │ (ERC-20)         │        │ (Soulbound NFT)  │              │
-│  └──────────────────┘        └──────────────────┘              │
-└─────────────────────────────────────────────────────────────────┘
+  BURN TAX (4.20%)
+  ----------------
+  Every time a merchant burns
+  Littercoin for ETH:
+
+  Total ETH payout
+    |
+    +-- 95.80% --> Merchant
+    +--  4.20% --> Platform owner
+
+
+  MERCHANT FEE ($20)
+  ------------------
+  Zero-waste merchants pay $20
+  in ETH to apply for approval:
+
+  Merchant pays fee
+    |
+    +-- $20 ETH --> Platform owner
+    |
+  Admin approves
+    |
+    +-- Merchant Token minted
 ```
 
-### Contracts
+## Contracts
+
+```
+  Littercoin (ERC-721)
+  Main contract. Holds ETH pool.
+  Deploys child contracts.
+  |
+  +-- OLMThankYouToken (ERC-20)
+  |   Minted to ETH donors.
+  |   $1 donated = 1 OLMTY.
+  |   Owned by Littercoin contract.
+  |
+  +-- MerchantToken (ERC-721)
+      Soulbound. Non-transferable.
+      One per address. Has expiry.
+      $20 fee to apply.
+      Owned by admin.
+```
 
 | Contract | Type | Purpose |
 |---|---|---|
-| **Littercoin** | ERC-721 (Enumerable) | Main token. Mint via EIP-712, transfer to merchants, burn for ETH. Holds the ETH pool and deploys child contracts. |
-| **MerchantToken** | ERC-721 (Soulbound) | Non-transferable. Minted by admin with an expiration timestamp. One per address. Gates who can receive and redeem Littercoin. |
-| **OLMRewardToken** | ERC-20 | Minted when ETH is sent to the Littercoin contract. 1 OLMRT per $1 USD of ETH donated (via Chainlink price feed). |
-| **MockV3Aggregator** | — | Test mock for Chainlink's AggregatorV3Interface (ETH/USD). |
+| **Littercoin** | ERC-721 Enumerable | Main token. Mint via EIP-712, transfer to merchants, burn for ETH. Holds the ETH pool. 4.20% burn tax. |
+| **MerchantToken** | ERC-721 Soulbound | Non-transferable. $20 fee + admin approval. Expiration timestamp. One per address. |
+| **OLMThankYouToken** | ERC-20 | Minted when ETH is donated. 1 OLMTY per $1 USD (via Chainlink). |
+| **MockV3Aggregator** | Test only | Mock Chainlink ETH/USD price feed. |
 
-### ETH Pool and Value
-
-```
-                    ┌──────────────────────┐
-                    │  Littercoin Contract  │
-                    │     (ETH Pool)       │
-                    │                      │
-  Supporters ──────►│  ETH Balance: $X     │◄────── Value grows
-  send ETH          │                      │        as more ETH
-                    │  Total Supply: N     │        is donated
-  Get back:         │  tokens              │
-  OLMRewardTokens   │                      │  Merchants burn:
-  ($1 = 1 OLMRT)    │  Value per token:    │  Get ETH out
-                    │  $X / N              │──────► ETH payout
-                    │                      │
-                    └──────────────────────┘
-```
-
-### Merchant Token Lifecycle
+## Merchant Token Lifecycle
 
 ```
-  ┌──────────┐     ┌───────────────┐     ┌─────────────────┐
-  │  Admin   │     │ MerchantToken │     │    Merchant     │
-  │ (Owner)  │     │  (Soulbound)  │     │                 │
-  │          │     │               │     │ - Can receive   │
-  │ Approves ├────►│ Mint with     ├────►│   Littercoin    │
-  │ merchant │     │ expiry date   │     │ - Can burn for  │
-  │          │     │               │     │   ETH           │
-  │ Can also │     │ Non-          │     │ - Cannot mint   │
-  │ renew or │     │ transferable  │     │   Littercoin    │
-  │ invalidate│    │               │     │ - Cannot trade  │
-  └──────────┘     └───────────────┘     └─────────────────┘
+  1. PAY FEE          2. ADMIN APPROVES    3. USE / EXPIRE
+  --------            ----------------     ---------------
 
-  States:
-  ┌────────┐  mint   ┌────────┐  time passes  ┌─────────┐
-  │  None  ├────────►│ Active ├──────────────►│ Expired │
-  └────────┘         └───┬────┘               └─────────┘
-                         │ invalidate              │
-                         ▼                         │ addExpirationTime
-                    ┌─────────┐                    │
-                    │ Expired │◄───────────────────┘
-                    └─────────┘
+  Merchant pays       Admin mints          Merchant can
+  $20 in ETH          soulbound token      receive + burn
+  (via Chainlink)     with expiry date     Littercoin
+
+                      Admin can also:
+                      - Extend expiry
+                      - Invalidate
 ```
 
-### Roles
+## Roles
 
 | Role | Can Do | Cannot Do |
 |---|---|---|
-| **User** | Mint Littercoin (with backend signature), transfer to merchants, send ETH to contract | Burn Littercoin, mint if holding a Merchant Token |
-| **Merchant** | Receive Littercoin from users, burn Littercoin for proportional ETH | Mint Littercoin, transfer Littercoin to others |
-| **Admin** | Mint/invalidate/renew Merchant Tokens, sign EIP-712 mint authorizations, pause/unpause contracts | — |
+| **User** | Mint Littercoin (with signature), transfer to merchants, donate ETH | Burn Littercoin, mint while holding a Merchant Token |
+| **Merchant** | Receive Littercoin, burn for ETH (minus 4.20% tax) | Mint Littercoin, transfer Littercoin |
+| **Admin** | Approve/invalidate/renew merchants, sign mints, pause contracts | — |
 
 ## Development
 
@@ -130,18 +165,19 @@ npm install
 ### Build and Test
 
 ```bash
-npx hardhat compile          # Compile contracts
-npx hardhat test             # Run all tests
-npx hardhat test --grep "should mint Littercoin"  # Run a single test
+npx hardhat compile
+npx hardhat test
+npx hardhat test --grep "burn tax"
 ```
 
 ### Tech Stack
 
-- **Solidity** 0.8.27
-- **Hardhat** with hardhat-toolbox
-- **OpenZeppelin** Contracts v4.9.2
+- **Solidity** 0.8.27 (Cancun EVM)
+- **OpenZeppelin** Contracts v5
 - **Chainlink** price feed (ETH/USD)
-- **Tests**: JavaScript (Mocha/Chai) with ethers.js v6
+- **Hardhat** with hardhat-toolbox
+- **Tests**: JavaScript (Mocha/Chai), ethers.js v6
+- **48 tests** covering all flows
 
 ## License
 

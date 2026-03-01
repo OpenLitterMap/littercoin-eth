@@ -1,20 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
-// Import OpenZeppelin Contracts v4.9.2
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 /// @title MerchantToken Contract
 /// @notice ERC721 token representing Merchant Tokens
 contract MerchantToken is ERC721, Ownable, Pausable {
 
-    using Counters for Counters.Counter;
-
     // ID to give to each token
-    Counters.Counter private _tokenCounter;
+    uint256 private _nextTokenId;
 
     // Mapping from owner address to token ID
     // Each address can only have one token
@@ -23,23 +20,64 @@ contract MerchantToken is ERC721, Ownable, Pausable {
     // Mapping from token ID to expiration timestamp
     mapping(uint256 => uint256) private _expirationTimestamps;
 
+    // Merchant fee: $20 USD worth of ETH
+    uint256 public constant MERCHANT_FEE_USD = 20;
+
+    // Chainlink Price Feed
+    AggregatorV3Interface internal priceFeed;
+
+    // Tracks whether a merchant has paid the application fee
+    mapping(address => bool) public feePaid;
+
     // Events
     event MerchantTokenMinted(address indexed to, uint256 tokenId, uint256 expiryTime);
     event MerchantTokenExpired(uint256 tokenId);
     event MerchantTokenRenewed(uint256 tokenId, uint256 newExpirationTimestamp);
+    event MerchantFeeCollected(address indexed merchant, uint256 ethAmount, uint256 usdValue);
 
-    constructor() ERC721("LittercoinMerchantToken", "LXMT") {}
+    constructor(address initialOwner, address _priceFeed) ERC721("LittercoinMerchantToken", "LXMT") Ownable(initialOwner) {
+        priceFeed = AggregatorV3Interface(_priceFeed);
+    }
 
-    /// @notice Mints a new Merchant Token to a specified address
-    /// @notice - needs backend authorisation
+    /// @notice Merchants pay the $20 fee to become eligible for a merchant token
+    function payMerchantFee() external payable whenNotPaused {
+        require(!feePaid[msg.sender], "Fee already paid");
+        require(balanceOf(msg.sender) == 0, "Already have a merchant token");
+
+        // Get the latest ETH/USD price
+        (, int256 price, , uint256 updatedAt, ) = priceFeed.latestRoundData();
+        require(price > 0, "Invalid price from Chainlink");
+        require(priceFeed.decimals() == 8, "Unexpected price feed decimals");
+        require(block.timestamp - updatedAt < 3600, "Stale price feed");
+
+        // Calculate minimum ETH required for $20
+        // price has 8 decimals, msg.value is in wei (18 decimals)
+        // $20 in ETH = (20 * 1e8 * 1e18) / price = (20 * 1e26) / price
+        uint256 requiredEth = (MERCHANT_FEE_USD * 1e26) / uint256(price);
+        require(msg.value >= requiredEth, "Insufficient ETH for merchant fee");
+
+        feePaid[msg.sender] = true;
+
+        // Send fee to owner
+        (bool success, ) = payable(owner()).call{value: msg.value}("");
+        require(success, "Fee transfer failed");
+
+        emit MerchantFeeCollected(msg.sender, msg.value, MERCHANT_FEE_USD);
+    }
+
+    /// @notice Mints a new Merchant Token to a specified address (owner approves after fee is paid)
     /// @param to The address to mint the token to
     function mint (address to, uint256 expirationTimestamp) external onlyOwner whenNotPaused {
         require(to != address(0), "Cannot mint to zero address");
         require(expirationTimestamp > block.timestamp, "Expiration must be in the future.");
         require(balanceOf(to) == 0, "User already has a token");
+        require(feePaid[to], "Merchant fee not paid");
 
-        _tokenCounter.increment();
-        uint256 tokenId = _tokenCounter.current();
+        // Clear the fee paid flag
+        feePaid[to] = false;
+
+        ++_nextTokenId;
+        uint256 tokenId = _nextTokenId;
 
         // Store the expiration timestamp before minting
         _expirationTimestamps[tokenId] = expirationTimestamp;
@@ -57,7 +95,7 @@ contract MerchantToken is ERC721, Ownable, Pausable {
     /// @param tokenId The ID of the token to renew
     /// @param additionalTime The additional time to add to the current expiration
     function addExpirationTime (uint256 tokenId, uint256 additionalTime) external onlyOwner whenNotPaused {
-        require(_exists(tokenId), "Token does not exist");
+        require(_ownerOf(tokenId) != address(0), "Token does not exist");
         require(additionalTime > 0, "Additional time must be greater than zero");
 
         _expirationTimestamps[tokenId] += additionalTime;
@@ -68,7 +106,7 @@ contract MerchantToken is ERC721, Ownable, Pausable {
     /// @notice Invalidates a Merchant Token
     /// @param tokenId The ID of the token to invalidate
     function invalidateToken (uint256 tokenId) external onlyOwner whenNotPaused {
-        require(_exists(tokenId), "Token does not exist");
+        require(_ownerOf(tokenId) != address(0), "Token does not exist");
         require(!isExpired(tokenId), "Token already expired");
 
         // Set the expiration timestamp to one hour ago
@@ -79,9 +117,9 @@ contract MerchantToken is ERC721, Ownable, Pausable {
 
     /// @notice Checks if a specific token has expired
     /// @param tokenId The ID of the token to check
-    /// @return bool Returns true if the token is expired, otherwise false-
+    /// @return bool Returns true if the token is expired, otherwise false
     function isExpired (uint256 tokenId) public view returns (bool) {
-        require(_exists(tokenId), "Token does not exist");
+        require(_ownerOf(tokenId) != address(0), "Token does not exist");
 
         return block.timestamp > _expirationTimestamps[tokenId];
     }
@@ -92,7 +130,11 @@ contract MerchantToken is ERC721, Ownable, Pausable {
     function hasValidMerchantToken (address user) public view returns (bool) {
         uint256 tokenId = _ownedTokenId[user];
 
-        if (tokenId == 0 || isExpired(tokenId)) {
+        if (tokenId == 0 || _ownerOf(tokenId) == address(0)) {
+            return false;
+        }
+
+        if (isExpired(tokenId)) {
             return false;
         }
 
@@ -105,19 +147,19 @@ contract MerchantToken is ERC721, Ownable, Pausable {
     function hasMerchantToken (address user) public view returns (bool) {
         uint256 tokenId = _ownedTokenId[user];
         if (tokenId == 0) return false;
-        return _exists(tokenId);
+        return _ownerOf(tokenId) != address(0);
     }
 
     function getExpirationTimestamp (uint256 tokenId) public view returns (uint256) {
-        require(_exists(tokenId), "Token does not exist");
+        require(_ownerOf(tokenId) != address(0), "Token does not exist");
 
         return _expirationTimestamps[tokenId];
     }
 
-    function getTokenIdByOwner (address owner) public view returns (uint256) {
-        require(owner != address(0), "Invalid address");
+    function getTokenIdByOwner (address _owner) public view returns (uint256) {
+        require(_owner != address(0), "Invalid address");
 
-        uint256 tokenId = _ownedTokenId[owner];
+        uint256 tokenId = _ownedTokenId[_owner];
 
         require(tokenId != 0, "Owner does not have a token");
 
@@ -141,17 +183,21 @@ contract MerchantToken is ERC721, Ownable, Pausable {
         _unpause();
     }
 
-    /// @dev Overrides the _beforeTokenTransfer hook to prevent transfers
-    function _beforeTokenTransfer (address from, address to, uint256 tokenId, uint256 batchSize) internal override {
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+    /// @dev Overrides the _update hook to prevent transfers (soulbound)
+    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+        address from = _ownerOf(tokenId);
 
-        // Prevent token transfers by reverting the transaction
-        require(from == address(0) || to == address(0), "Transfers are disabled");
+        // Only allow minting (from == 0) and burning (to == 0)
+        if (from != address(0) && to != address(0)) {
+            revert("Transfers are disabled");
+        }
 
         if (from != address(0)) {
             // Token is being burned; clear the mapping
             _ownedTokenId[from] = 0;
         }
+
+        return super._update(to, tokenId, auth);
     }
 
     /// @dev Overrides the supportsInterface function to add ERC721
@@ -161,6 +207,6 @@ contract MerchantToken is ERC721, Ownable, Pausable {
 
     // @notice Get the current token ID
     function getCurrentTokenId () external view returns (uint256) {
-        return _tokenCounter.current();
+        return _nextTokenId;
     }
 }

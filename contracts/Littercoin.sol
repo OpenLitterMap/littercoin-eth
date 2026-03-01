@@ -1,28 +1,25 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
-// Import OpenZeppelin Contracts v4.9.2
+// Import OpenZeppelin Contracts v5
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 // Import Dependencies
 import { MerchantToken } from "./MerchantToken.sol";
-import { OLMRewardToken } from "./OLMRewardToken.sol";
+import { OLMThankYouToken } from "./OLMThankYouToken.sol";
 
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausable, EIP712 {
 
-    using Counters for Counters.Counter;
-
     // ID of the next Littercoin to be minted
-    Counters.Counter private _tokenCounter;
+    uint256 private _nextTokenId;
 
     // Used nonces for preventing replay attacks
     mapping(uint256 => bool) public usedNonces;
@@ -33,8 +30,12 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     // Define a limit for the number of Littercoin tokens that can be minted at once
     uint256 public constant MAX_MINT_AMOUNT = 10;
 
-    // OLM Reward Token
-    OLMRewardToken public rewardToken;
+    // Burn tax: 4.20% (420 basis points out of 10000)
+    uint256 public constant BURN_TAX_BPS = 420;
+    uint256 public constant BPS_DENOMINATOR = 10000;
+
+    // OLM Thank You Token
+    OLMThankYouToken public rewardToken;
 
     // Merchant Token
     MerchantToken public merchantToken;
@@ -45,14 +46,16 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     bytes32 private constant MINT_TYPEHASH = keccak256("Mint(address user,uint256 amount,uint256 nonce,uint256 expiry)");
 
     /// @notice Contract constructor
-    constructor (address _priceFeed) ERC721("Littercoin", "LITTERX") EIP712("Littercoin", "1") {
-        // Deploy the Reward Token and transfer ownership to this contract
-        rewardToken = new OLMRewardToken();
-        rewardToken.transferOwnership(address(this));
+    constructor (address _priceFeed)
+        ERC721("Littercoin", "LITTERX")
+        Ownable(msg.sender)
+        EIP712("Littercoin", "1")
+    {
+        // Deploy the Thank You Token with this contract as owner
+        rewardToken = new OLMThankYouToken(address(this));
 
-        // Deploy the Merchant Token
-        merchantToken = new MerchantToken();
-        merchantToken.transferOwnership(msg.sender);
+        // Deploy the Merchant Token with deployer as owner and price feed
+        merchantToken = new MerchantToken(msg.sender, _priceFeed);
 
         // Set up Chainlink Price Feed (ETH/USD on mainnet)
         priceFeed = AggregatorV3Interface(_priceFeed);
@@ -64,17 +67,18 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     /// @notice Event emitted when a valid Merchant Token Holder burns Littercoin for ETH
     event BurnLittercoin (address indexed user, uint256 tokensToBurn, uint256 ethAmount);
 
-    /// @notice Event emitted when a user is rewarded OLM Reward Tokens
+    /// @notice Event emitted when a user is rewarded OLM Thank You Tokens
     event Reward (address indexed user, uint256 rewardAmount);
 
+    /// @notice Event emitted when burn tax is collected
+    event BurnTaxCollected(address indexed owner, uint256 taxAmount);
+
     /// @notice Getter function for rewardToken address
-    /// @notice - only needed for testing
     function getRewardTokenAddress() external view returns (address) {
         return address(rewardToken);
     }
 
     /// @notice Getter function for merchantToken address
-    /// @notice - only needed for testing
     function getMerchantTokenAddress() external view returns (address) {
         return address(merchantToken);
     }
@@ -114,8 +118,8 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
 
         // Mint tokens for the user
         for (uint256 i = 0; i < amount; i++) {
-            _tokenCounter.increment();
-            uint256 tokenId = _tokenCounter.current();
+            ++_nextTokenId;
+            uint256 tokenId = _nextTokenId;
 
             // Mint tokens to the user
             _safeMint(msg.sender, tokenId);
@@ -133,8 +137,8 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         uint256 numTokens = tokenIds.length;
         require(numTokens > 0, "No tokens provided.");
 
-        uint256 totalSupply = totalSupply();
-        require(totalSupply > 0, "No tokens in circulation.");
+        uint256 currentSupply = totalSupply();
+        require(currentSupply > 0, "No tokens in circulation.");
 
         // Ensure there is more than 0 ETH in the contract
         uint256 contractBalance = address(this).balance;
@@ -147,18 +151,29 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
             _burn(tokenId);
         }
 
-        // Calculate the total number of eligible tokens to redeem
-        uint256 totalEthToTransfer = (contractBalance * numTokens) / totalSupply;
+        // Calculate the total ETH to redeem
+        uint256 totalEthToTransfer = (contractBalance * numTokens) / currentSupply;
         require(totalEthToTransfer > 0, "ETH amount too small to redeem");
 
-        // Transfer the total ETH to the caller with reentrancy protection
-        (bool success, ) = payable(msg.sender).call{value: totalEthToTransfer}("");
+        // Calculate the 4.20% burn tax
+        uint256 taxAmount = (totalEthToTransfer * BURN_TAX_BPS) / BPS_DENOMINATOR;
+        uint256 merchantAmount = totalEthToTransfer - taxAmount;
+
+        // Transfer tax to owner
+        if (taxAmount > 0) {
+            (bool taxSuccess, ) = payable(owner()).call{value: taxAmount}("");
+            require(taxSuccess, "Tax transfer failed");
+            emit BurnTaxCollected(owner(), taxAmount);
+        }
+
+        // Transfer remaining ETH to merchant
+        (bool success, ) = payable(msg.sender).call{value: merchantAmount}("");
         require(success, "Transfer failed");
 
-        emit BurnLittercoin(msg.sender, numTokens, totalEthToTransfer);
+        emit BurnLittercoin(msg.sender, numTokens, merchantAmount);
     }
 
-    /// @notice Accepts ETH and rewards OLMRewardTokens based on the amount
+    /// @notice Accepts ETH and rewards OLMThankYouTokens based on the amount
     receive () external payable nonReentrant whenNotPaused {
         uint256 ethAmount = msg.value;
 
@@ -169,7 +184,6 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         require(block.timestamp - updatedAt < 3600, "Stale price feed");
 
         // Convert price to uint256 and get reward amount
-        // assume $2000 for testing
         // Assuming the price feed has 8 decimals
         // Convert price to uint256 and get ethPriceUsd (the price of 1 ETH in USD)
         uint256 ethPriceUsd = uint256(price);
@@ -177,10 +191,10 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         // Calculate the number of reward tokens to mint
         // ethPriceUsd has 8 decimals, so divide by 10^8 to get the actual USD value
         // ethAmount is in wei (10^18), so divide by 10^18 to convert to ETH
-        // rewardAmount = ethAmount (in USD) * (1 OLMRewardToken / 1 USD)
+        // rewardAmount = ethAmount (in USD) * (1 OLMThankYouToken / 1 USD)
         uint256 rewardAmount = (ethAmount * ethPriceUsd) / 1e8;
 
-        // Mint OLM Reward Tokens to the sender
+        // Mint OLM Thank You Tokens to the sender
         rewardToken.mint(msg.sender, rewardAmount);
 
         emit Reward(msg.sender, rewardAmount);
@@ -188,7 +202,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
 
     // @notice Get the current token ID
     function getCurrentTokenId () external view returns (uint256) {
-        return _tokenCounter.current();
+        return _nextTokenId;
     }
 
     function pause () external onlyOwner {
@@ -200,17 +214,19 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     }
 
     function exists (uint256 tokenId) external view returns (bool) {
-        return _exists(tokenId);
+        return _ownerOf(tokenId) != address(0);
     }
 
-    /// @notice Track each token transfer and increment the count
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId,
-        uint256 batchSize
-    ) internal override(ERC721, ERC721Enumerable) whenNotPaused {
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+    /// @notice Track each token transfer and enforce lifecycle rules
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override(ERC721, ERC721Enumerable)
+        returns (address)
+    {
+        // Enforce pause on all token operations
+        _requireNotPaused();
+
+        address from = _ownerOf(tokenId);
 
         // from === 0 is minting, to === 0 is burning
         if (from == address(0)) {
@@ -235,6 +251,16 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
             // Mark the token as transferred
             tokenTransferred[tokenId] = true;
         }
+
+        return super._update(to, tokenId, auth);
+    }
+
+    // Required override for ERC721Enumerable
+    function _increaseBalance(address account, uint128 value)
+        internal
+        override(ERC721, ERC721Enumerable)
+    {
+        super._increaseBalance(account, value);
     }
 
     // Override the supportsInterface function to include ERC721Enumerable

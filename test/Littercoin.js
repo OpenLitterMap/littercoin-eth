@@ -11,6 +11,9 @@ describe("Littercoin Smart Contract", function () {
     let initialPrice = ethers.parseUnits("2000", decimals);
     const merchantTokenExpiry = Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60); // 30 days from now
 
+    // $20 at $2000/ETH = 0.01 ETH
+    const merchantFeeEth = ethers.parseEther("0.01");
+
     beforeEach(async function () {
 
         // Create Users
@@ -33,9 +36,15 @@ describe("Littercoin Smart Contract", function () {
         const merchantTokenAddress = await littercoin.getMerchantTokenAddress();
 
         // Attach to the deployed token contracts
-        rewardToken = await ethers.getContractAt("OLMRewardToken", rewardTokenAddress);
+        rewardToken = await ethers.getContractAt("OLMThankYouToken", rewardTokenAddress);
         merchantToken = await ethers.getContractAt("MerchantToken", merchantTokenAddress);
     });
+
+    // Helper: pay merchant fee then owner mints merchant token
+    async function setupMerchant(merchantSigner, expiry) {
+        await merchantToken.connect(merchantSigner).payMerchantFee({ value: merchantFeeEth });
+        await merchantToken.connect(owner).mint(merchantSigner.address, expiry);
+    }
 
     /**
      * Littercoin Tests
@@ -124,7 +133,7 @@ describe("Littercoin Smart Contract", function () {
 
         await expect(
             littercoin.connect(user1)["safeTransferFrom(address,address,uint256)"](user1.address, ethers.ZeroAddress, 1)
-        ).to.be.revertedWith("ERC721: transfer to the zero address");
+        ).to.be.revertedWithCustomError(littercoin, "ERC721InvalidReceiver").withArgs(ethers.ZeroAddress);
     });
 
     it("should update tokenTransferred to True Littercoin is transferred from user to merchant", async function () {
@@ -135,8 +144,8 @@ describe("Littercoin Smart Contract", function () {
         const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
         await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
 
-        // Mint Merchant Token to user2
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+        // Setup Merchant Token for user2
+        await setupMerchant(user2, merchantTokenExpiry);
 
         // Transfer Littercoin from user1 to user2 (merchant)
         await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
@@ -153,8 +162,8 @@ describe("Littercoin Smart Contract", function () {
         const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
         await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
 
-        // Mint Merchant Token to user2
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+        // Setup Merchant Token for user2
+        await setupMerchant(user2, merchantTokenExpiry);
 
         // Transfer Littercoin from user1 to user2 (merchant)
         await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
@@ -187,7 +196,7 @@ describe("Littercoin Smart Contract", function () {
 
         // Attempt to mint Littercoin
         await expect(littercoin.connect(user1).mint(amount, nonce, expiry, signature))
-            .to.be.revertedWith("Pausable: paused");
+            .to.be.revertedWithCustomError(littercoin, "EnforcedPause");
 
         // Unpause the contract
         await littercoin.connect(owner).unpause();
@@ -203,13 +212,13 @@ describe("Littercoin Smart Contract", function () {
         const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
         await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
 
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+        await setupMerchant(user2, merchantTokenExpiry);
 
         await littercoin.connect(owner).pause();
 
         // Attempt to transfer Littercoin from user1 to user2 (merchant)
         await expect(littercoin.connect(user1).transferFrom(user1.address, user2.address, 1))
-            .to.be.revertedWith("Pausable: paused");
+            .to.be.revertedWithCustomError(littercoin, "EnforcedPause");
 
         await littercoin.connect(owner).unpause();
 
@@ -223,7 +232,7 @@ describe("Littercoin Smart Contract", function () {
         const expiry = Math.floor(Date.now() / 1000) + 3600;
         const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
         await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+        await setupMerchant(user2, merchantTokenExpiry);
 
         // Send ETH to contract so burning can proceed
         await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
@@ -236,7 +245,7 @@ describe("Littercoin Smart Contract", function () {
 
         // Attempt to burn Littercoin
         await expect(littercoin.connect(user2).burnLittercoin([1]))
-            .to.be.revertedWith("Pausable: paused");
+            .to.be.revertedWithCustomError(littercoin, "EnforcedPause");
 
         // Unpause the contract
         await littercoin.connect(owner).unpause();
@@ -251,7 +260,7 @@ describe("Littercoin Smart Contract", function () {
 
         // Attempt to send ETH to the contract
         await expect(user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") }))
-            .to.be.revertedWith("Pausable: paused");
+            .to.be.revertedWithCustomError(littercoin, "EnforcedPause");
 
         // Unpause the contract
         await littercoin.connect(owner).unpause();
@@ -263,14 +272,14 @@ describe("Littercoin Smart Contract", function () {
     it("should not allow non-owner to pause or unpause the contract", async function () {
         // Attempt to pause the contract as non-owner
         await expect(littercoin.connect(user1).pause())
-            .to.be.revertedWith("Ownable: caller is not the owner");
+            .to.be.revertedWithCustomError(littercoin, "OwnableUnauthorizedAccount").withArgs(user1.address);
 
         // Pause the contract as owner
         await littercoin.connect(owner).pause();
 
         // Attempt to unpause the contract as non-owner
         await expect(littercoin.connect(user1).unpause())
-            .to.be.revertedWith("Ownable: caller is not the owner");
+            .to.be.revertedWithCustomError(littercoin, "OwnableUnauthorizedAccount").withArgs(user1.address);
 
         // Unpause the contract as owner
         await littercoin.connect(owner).unpause();
@@ -285,7 +294,7 @@ describe("Littercoin Smart Contract", function () {
 
         await expect(
             littercoin.connect(user1).transferFrom(user1.address, ethers.ZeroAddress, 1)
-        ).to.be.revertedWith("ERC721: transfer to the zero address");
+        ).to.be.revertedWithCustomError(littercoin, "ERC721InvalidReceiver").withArgs(ethers.ZeroAddress);
     });
 
     /**
@@ -294,8 +303,8 @@ describe("Littercoin Smart Contract", function () {
 
     // Create Merchant Token
     it("should mint Merchant Token tokens correctly", async function () {
-        // The owner can mint a Merchant Token for user2.
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+        // Pay fee then mint
+        await setupMerchant(user2, merchantTokenExpiry);
 
         // Check user2s Merchant Token balance
         const user2Balance = await merchantToken.balanceOf(user2.address);
@@ -304,7 +313,7 @@ describe("Littercoin Smart Contract", function () {
 
     it("should not allow non-owner to mint Merchant Tokens", async function () {
         await expect(merchantToken.connect(user1).mint(user2.address, merchantTokenExpiry))
-            .to.be.revertedWith("Ownable: caller is not the owner");
+            .to.be.revertedWithCustomError(merchantToken, "OwnableUnauthorizedAccount").withArgs(user1.address);
     });
 
     // Merchant Token Holder can send Littercoin to the Smart Contract and get Eth out
@@ -319,8 +328,8 @@ describe("Littercoin Smart Contract", function () {
         const contractBalance = await ethers.provider.getBalance(littercoin.getAddress());
         expect(contractBalance).to.equal(ethers.parseEther("1"));
 
-        // Mint Merchant Token for user2
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+        // Setup Merchant Token for user2
+        await setupMerchant(user2, merchantTokenExpiry);
         const user2Balance = await merchantToken.balanceOf(user2.address);
         expect(user2Balance).to.equal(1);
 
@@ -341,10 +350,8 @@ describe("Littercoin Smart Contract", function () {
         const user2LittercoinBalance = await littercoin.balanceOf(user2.address);
         expect(user2LittercoinBalance).to.equal(1);
 
-        // Merchant Token Holder (user2) sends the Littercoin to the Smart Contract
-        // They should receive 1 ETH in return
-        // and have 0 littercoin
-        await littercoin.connect(user2).burnLittercoin([1], { gasLimit: 100000 });
+        // Merchant Token Holder (user2) burns the Littercoin
+        await littercoin.connect(user2).burnLittercoin([1], { gasLimit: 200000 });
 
         // Check user2 Littercoin balance after redemption
         const user2LittercoinBalance_a = await littercoin.balanceOf(user2.address);
@@ -352,7 +359,7 @@ describe("Littercoin Smart Contract", function () {
 
         // Check user2's Eth balance after redemption
         const userEthBalance = await ethers.provider.getBalance(user2.address);
-        expect(userEthBalance).to.not.equal(0); // 9999999916567839982327
+        expect(userEthBalance).to.not.equal(0);
 
         // User2 should still have the Merchant Token
         const user2MerchantTokenBalance = await merchantToken.balanceOf(user2.address);
@@ -361,8 +368,8 @@ describe("Littercoin Smart Contract", function () {
 
     it("should not burn littercoin if no littercoin exists", async function () {
 
-        // Mint Merchant Token for user2
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+        // Setup Merchant Token for user2
+        await setupMerchant(user2, merchantTokenExpiry);
 
         // Attempt to redeem Littercoin without a Merchant Token, expecting a revert
         await expect(littercoin.connect(user2).burnLittercoin([1], { gasLimit: 5000000 }))
@@ -383,7 +390,7 @@ describe("Littercoin Smart Contract", function () {
             .to.be.revertedWith("Must hold a Merchant Token.");
     });
 
-    it("should reward OLMRewardToken correctly upon receiving ETH", async function () {
+    it("should reward OLMThankYouToken correctly upon receiving ETH", async function () {
         // Send 1 ETH from user1 to the Littercoin contract
         // We assume that 1 eth = $2000 for testing
         await user1.sendTransaction({
@@ -391,7 +398,7 @@ describe("Littercoin Smart Contract", function () {
             value: ethers.parseEther("1"),
         });
 
-        // Check user1's OLMRewardToken balance ($2000 eth => 2000 OLMRewardTokens)
+        // Check user1's OLMThankYouToken balance ($2000 eth => 2000 OLMThankYouTokens)
         const rewardBalance = await rewardToken.balanceOf(user1.address);
         expect(rewardBalance).to.equal(ethers.parseEther("2000"));
     });
@@ -404,8 +411,8 @@ describe("Littercoin Smart Contract", function () {
         const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
         await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
 
-        // Mint Merchant Token for user2
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+        // Setup Merchant Token for user2
+        await setupMerchant(user2, merchantTokenExpiry);
 
         // Send littercoin from user1 to user 2
         await littercoin.connect(user1)["safeTransferFrom(address,address,uint256)"](user1.address, user2.address, 1);
@@ -418,6 +425,9 @@ describe("Littercoin Smart Contract", function () {
     it("should not mint a merchant token for a date in the past", async function () {
         // Mint Merchant Token for user2 with an expiration timestamp in the past
         const expiredTimestamp = Math.floor(Date.now() / 1000) - (60 * 60); // 1 hour ago
+
+        // Pay fee but try to mint with past expiry
+        await merchantToken.connect(user2).payMerchantFee({ value: merchantFeeEth });
 
         await expect(merchantToken.connect(owner).mint(user2.address, expiredTimestamp))
             .to.be.revertedWith("Expiration must be in the future.");
@@ -438,8 +448,8 @@ describe("Littercoin Smart Contract", function () {
         const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
         await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
 
-        // Mint the merchant token for user2
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+        // Setup merchant token for user2
+        await setupMerchant(user2, merchantTokenExpiry);
 
         // Transfer Littercoin from user1 to user2 (merchant) while token is still valid
         await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
@@ -468,8 +478,8 @@ describe("Littercoin Smart Contract", function () {
         const currentTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
         const initialExpiry = currentTimestamp + 3600; // 1 hour from now
 
-        // Mint Merchant Token to user1
-        await merchantToken.connect(owner).mint(user1.address, initialExpiry);
+        // Setup Merchant Token for user1
+        await setupMerchant(user1, initialExpiry);
 
         // Add 2 more hours to the expiration
         const additionalTime = 2 * 3600;
@@ -491,8 +501,8 @@ describe("Littercoin Smart Contract", function () {
         const currentTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
         const merchantTokenExpiry = currentTimestamp + 3600;
 
-        // Mint Merchant Token to user1
-        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+        // Setup Merchant Token for user1
+        await setupMerchant(user1, merchantTokenExpiry);
 
         // Invalidate the Merchant Token
         await merchantToken.connect(owner).invalidateToken(1);
@@ -514,17 +524,17 @@ describe("Littercoin Smart Contract", function () {
         const currentTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
         const merchantTokenExpiry = currentTimestamp + 3600;
 
-        // Mint Merchant Token to user1
-        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+        // Setup Merchant Token for user1
+        await setupMerchant(user1, merchantTokenExpiry);
 
         // Attempt to invalidate the token as user1
         await expect(merchantToken.connect(user1).invalidateToken(1))
-            .to.be.revertedWith("Ownable: caller is not the owner");
+            .to.be.revertedWithCustomError(merchantToken, "OwnableUnauthorizedAccount").withArgs(user1.address);
     });
 
     it("should prevent users from transferring Merchant Tokens", async function () {
-        // Mint Merchant Token to user1
-        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+        // Setup Merchant Token for user1
+        await setupMerchant(user1, merchantTokenExpiry);
 
         // Attempt to transfer the Merchant Token to user2
         await expect(merchantToken.connect(user1).transferFrom(user1.address, user2.address, 1))
@@ -532,8 +542,8 @@ describe("Littercoin Smart Contract", function () {
     });
 
     it("should not allow adding zero additional expiration time", async function () {
-        // Mint Merchant Token to user1
-        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+        // Setup Merchant Token for user1
+        await setupMerchant(user1, merchantTokenExpiry);
 
         // Attempt to add zero additional time
         await expect(merchantToken.connect(owner).addExpirationTime(1, 0))
@@ -541,8 +551,8 @@ describe("Littercoin Smart Contract", function () {
     });
 
     it("should allow retrieval of Merchant Token expiration timestamp", async function () {
-        // Mint Merchant Token to user1
-        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+        // Setup Merchant Token for user1
+        await setupMerchant(user1, merchantTokenExpiry);
 
         // Retrieve the expiration timestamp
         const expiryTimestamp = await merchantToken.getExpirationTimestamp(1);
@@ -550,8 +560,8 @@ describe("Littercoin Smart Contract", function () {
     });
 
     it("should not allow merchant token holders to mint Littercoin", async function () {
-        // Mint Merchant Token for user1
-        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+        // Setup Merchant Token for user1
+        await setupMerchant(user1, merchantTokenExpiry);
 
         // Attempt to mint Littercoin for a Merchant Token Holder
         const nonce = 17;
@@ -564,20 +574,20 @@ describe("Littercoin Smart Contract", function () {
     });
 
     it("should prevent minting a Merchant Token to an address that already has one", async function () {
-        // Mint a Merchant Token to user1
-        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+        // Setup Merchant Token for user1
+        await setupMerchant(user1, merchantTokenExpiry);
 
-        // Attempt to mint another Merchant Token to the same address
-        await expect(merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry))
-            .to.be.revertedWith("User already has a token");
+        // Pay fee again and attempt to mint another Merchant Token
+        await expect(merchantToken.connect(user1).payMerchantFee({ value: merchantFeeEth }))
+            .to.be.revertedWith("Already have a merchant token");
     });
 
     it("should prevent merchants from transferring Littercoin tokens", async function () {
         // Mint 1 Littercoin token for user1
         await mintLittercoinForUser(user1, 1);
 
-        // Mint Merchant Token to user2 (merchant)
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+        // Setup Merchant Token for user2
+        await setupMerchant(user2, merchantTokenExpiry);
 
         // Transfer Littercoin token from user1 to user2 (merchant)
         await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
@@ -591,10 +601,10 @@ describe("Littercoin Smart Contract", function () {
         // Mint Littercoin token to user1
         await mintLittercoinForUser(user1, 1);
 
-        // Mint Merchant Token to user2 (merchant)
-        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+        // Setup Merchant Token for user2
+        await setupMerchant(user2, merchantTokenExpiry);
 
-        // Send littercoin to the contract
+        // Send ETH to the contract
         await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
 
         // Attempt to burn the token by user2 (merchant), who does not own it
@@ -603,14 +613,14 @@ describe("Littercoin Smart Contract", function () {
     });
 
     it("should prevent minting a Merchant Token to the zero address", async function () {
-        // Attempt to mint a Merchant Token to zero address
+        // Attempt to mint a Merchant Token to zero address (fails before fee check)
         await expect(merchantToken.connect(owner).mint(ethers.ZeroAddress, merchantTokenExpiry))
             .to.be.revertedWith("Cannot mint to zero address");
     });
 
     it("should allow users to burn their own Merchant Tokens", async function () {
-        // Mint a Merchant Token to user1
-        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+        // Setup Merchant Token for user1
+        await setupMerchant(user1, merchantTokenExpiry);
 
         // Check balance before burning
         let balance = await merchantToken.balanceOf(user1.address);
@@ -625,15 +635,15 @@ describe("Littercoin Smart Contract", function () {
     });
 
     it("should not allow users to burn Merchant Tokens when the contract is paused", async function () {
-        // Mint a Merchant Token to user1
-        await merchantToken.connect(owner).mint(user1.address, merchantTokenExpiry);
+        // Setup Merchant Token for user1
+        await setupMerchant(user1, merchantTokenExpiry);
 
         // Pause the MerchantToken contract
         await merchantToken.connect(owner).pause();
 
         // Attempt to burn the Merchant Token
         await expect(merchantToken.connect(user1).burn())
-            .to.be.revertedWith("Pausable: paused");
+            .to.be.revertedWithCustomError(merchantToken, "EnforcedPause");
 
         // Unpause the MerchantToken contract
         await merchantToken.connect(owner).unpause();
@@ -644,6 +654,151 @@ describe("Littercoin Smart Contract", function () {
         // Check balance after burning
         const balance = await merchantToken.balanceOf(user1.address);
         expect(balance).to.equal(0);
+    });
+
+    /**
+     * Burn Tax Tests (4.20%)
+     */
+
+    it("should collect 4.20% burn tax and send to owner", async function () {
+        // Send 1 ETH to the contract
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
+
+        // Mint Littercoin for user3
+        const nonce = 30;
+        const amount = 1;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+        const signature = await getMintSignature(owner, littercoinAddress, user3.address, amount, nonce, expiry);
+        await littercoin.connect(user3).mint(amount, nonce, expiry, signature);
+
+        // Setup merchant for user2
+        await setupMerchant(user2, merchantTokenExpiry);
+
+        // Transfer Littercoin to merchant
+        await littercoin.connect(user3).transferFrom(user3.address, user2.address, 1);
+
+        // Record balances before burn
+        const ownerBalanceBefore = await ethers.provider.getBalance(owner.address);
+        const merchantBalanceBefore = await ethers.provider.getBalance(user2.address);
+
+        // Merchant burns
+        const tx = await littercoin.connect(user2).burnLittercoin([1], { gasLimit: 200000 });
+        const receipt = await tx.wait();
+        const gasUsed = receipt.gasUsed * receipt.gasPrice;
+
+        // Check balances after burn
+        const ownerBalanceAfter = await ethers.provider.getBalance(owner.address);
+        const merchantBalanceAfter = await ethers.provider.getBalance(user2.address);
+
+        // 1 ETH total, 4.20% tax = 0.042 ETH to owner, 0.958 ETH to merchant
+        const expectedTax = ethers.parseEther("1") * 420n / 10000n;
+        const expectedMerchant = ethers.parseEther("1") - expectedTax;
+
+        expect(ownerBalanceAfter - ownerBalanceBefore).to.equal(expectedTax);
+        expect(merchantBalanceAfter - merchantBalanceBefore + gasUsed).to.equal(expectedMerchant);
+    });
+
+    it("should emit BurnTaxCollected event with correct amounts", async function () {
+        // Send 1 ETH to the contract
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
+
+        // Mint and transfer Littercoin to merchant
+        const nonce = 31;
+        const amount = 1;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+        const signature = await getMintSignature(owner, littercoinAddress, user3.address, amount, nonce, expiry);
+        await littercoin.connect(user3).mint(amount, nonce, expiry, signature);
+        await setupMerchant(user2, merchantTokenExpiry);
+        await littercoin.connect(user3).transferFrom(user3.address, user2.address, 1);
+
+        const expectedTax = ethers.parseEther("1") * 420n / 10000n;
+
+        // Burn should emit BurnTaxCollected
+        await expect(littercoin.connect(user2).burnLittercoin([1], { gasLimit: 200000 }))
+            .to.emit(littercoin, "BurnTaxCollected")
+            .withArgs(owner.address, expectedTax);
+    });
+
+    it("should apply burn tax correctly with multiple token burns", async function () {
+        // Send 10 ETH to the contract
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("10") });
+
+        // Mint 5 Littercoin for user3
+        const nonce = 32;
+        const amount = 5;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+        const signature = await getMintSignature(owner, littercoinAddress, user3.address, amount, nonce, expiry);
+        await littercoin.connect(user3).mint(amount, nonce, expiry, signature);
+
+        // Setup merchant for user2
+        await setupMerchant(user2, merchantTokenExpiry);
+
+        // Transfer all 5 Littercoin to merchant
+        for (let i = 1; i <= 5; i++) {
+            await littercoin.connect(user3).transferFrom(user3.address, user2.address, i);
+        }
+
+        // Record balances before burn
+        const ownerBalanceBefore = await ethers.provider.getBalance(owner.address);
+
+        // Burn all 5 tokens at once
+        await littercoin.connect(user2).burnLittercoin([1, 2, 3, 4, 5], { gasLimit: 500000 });
+
+        const ownerBalanceAfter = await ethers.provider.getBalance(owner.address);
+
+        // 10 ETH, 5/5 tokens = 10 ETH total, 4.20% = 0.42 ETH tax
+        const expectedTax = ethers.parseEther("10") * 420n / 10000n;
+        expect(ownerBalanceAfter - ownerBalanceBefore).to.equal(expectedTax);
+    });
+
+    /**
+     * Merchant Fee Tests
+     */
+
+    it("should require merchant to pay fee before token can be minted", async function () {
+        // Try to mint without paying fee
+        await expect(merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry))
+            .to.be.revertedWith("Merchant fee not paid");
+    });
+
+    it("should allow merchant to pay fee and then owner to mint", async function () {
+        // Pay the fee
+        await merchantToken.connect(user2).payMerchantFee({ value: merchantFeeEth });
+
+        // Now owner can mint
+        await merchantToken.connect(owner).mint(user2.address, merchantTokenExpiry);
+
+        const balance = await merchantToken.balanceOf(user2.address);
+        expect(balance).to.equal(1);
+    });
+
+    it("should reject insufficient merchant fee", async function () {
+        const insufficientEth = ethers.parseEther("0.005"); // Only $10 worth
+
+        await expect(merchantToken.connect(user2).payMerchantFee({ value: insufficientEth }))
+            .to.be.revertedWith("Insufficient ETH for merchant fee");
+    });
+
+    it("should not allow paying merchant fee twice", async function () {
+        await merchantToken.connect(user2).payMerchantFee({ value: merchantFeeEth });
+
+        await expect(merchantToken.connect(user2).payMerchantFee({ value: merchantFeeEth }))
+            .to.be.revertedWith("Fee already paid");
+    });
+
+    it("should emit MerchantFeeCollected event", async function () {
+        await expect(merchantToken.connect(user2).payMerchantFee({ value: merchantFeeEth }))
+            .to.emit(merchantToken, "MerchantFeeCollected")
+            .withArgs(user2.address, merchantFeeEth, 20);
+    });
+
+    it("should send merchant fee to owner", async function () {
+        const ownerBalanceBefore = await ethers.provider.getBalance(owner.address);
+
+        await merchantToken.connect(user2).payMerchantFee({ value: merchantFeeEth });
+
+        const ownerBalanceAfter = await ethers.provider.getBalance(owner.address);
+        expect(ownerBalanceAfter - ownerBalanceBefore).to.equal(merchantFeeEth);
     });
 
     // Helper function to mint Littercoin for a User

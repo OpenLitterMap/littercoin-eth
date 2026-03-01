@@ -1,58 +1,39 @@
-# Littercoin Smart Contract
+# Littercoin
 
-## *** In development: Has not been audited yet. ***
+**An exchangeless, non-tradable climate currency on Ethereum.**
 
-## About Littercoin
-Littercoin was first conceptualised in 2015 after the openlittermap founder was introduced to the concept of 
-tokenisation during the openlittermap citizen science & plastic pollution research (which started pre-iPhone in 2008).
+> **Status: In development — not yet audited.**
 
-By applying the proof-of-work principle to the production of real-world geographic information, the idea for
-Littercoin was born. Unlike most monetary paradigms, Littercoin intends to be different.
+## Overview
 
-Littercoin is created exclusively by real-people who are creating real data about real litter that is polluting a real
-environment. Littercoin tokenises the production of geographic information, rewarding the concentration of human time
-and energy for participating in citizen science. To earn a littercoin, simply upload 100 photos of litter to openlittermap
-and you will be rewarded with 1 Littercoin.
+Littercoin tokenises the production of geographic information. Users earn Littercoin by contributing litter data to [OpenLitterMap](https://openlittermap.com) — upload 100 photos and receive 1 Littercoin. Each Littercoin is an ERC-721 NFT with a constrained 3-transaction lifecycle: **mint, transfer, burn**.
 
-Littercoin gets its value from a smart contract that holds crypto. If there are $100 worth of crypto in the contract
-and 10 littercoin in circulation, then each littercoin will be worth $10.
+Littercoin gets its value from an ETH pool held in the smart contract. If the pool holds $20,000 worth of ETH and 100 Littercoin are in circulation, each is worth $200. Littercoin can only be spent with pre-approved zero-waste merchants who do not use plastic.
 
-However, if you earn a Littercoin you cannot send it to the smart contract. To achieve this, we introduce a new concept
-to the crypto ecosystem: Merchant Tokens.
+There is no ICO, no pre-mine, and no exchanges.
 
-A valid merchant token is required to send Littercoin to the smart contract and get the crypto out.
-Therefore, Littercoin can only be spent with participating merchants.
-To tackle the global plastic problem at source, Merchant tokens will only be awarded to pre-approved green-listed 
-zero-waste climate merchants who do not use plastic. If approved, merchants they will receive a special Merchant NFT
-which has a default expiration time of 12 months.
+## Token Lifecycle
 
-To enforce additional constraints we have recently upgraded Littercoin to adopt NFT format. 
-By doing so we can ensure that each Littercoin has a limited number of 3 transactions.
+Each Littercoin NFT has exactly 3 transactions in its lifetime:
 
-1. The mint. You claim your tokens when they are owed.
-2. The transfer. You can send your tokens to a valid merchant token holder.
-3. The burn. A valid merchant token holder can send littercoin to the smart contract.
+```
+  ┌──────────┐         ┌──────────┐         ┌──────────────────┐
+  │  1. MINT │         │2.TRANSFER│         │     3. BURN      │
+  │          │         │          │         │                  │
+  │ Backend  │         │ User     │         │ Merchant sends   │
+  │ signs    ├────────►│ sends to ├────────►│ to contract,     │
+  │ EIP-712, │         │ merchant │         │ receives ETH     │
+  │ user     │         │ (once)   │         │                  │
+  │ claims   │         │          │         │ ETH = pool *     │
+  │ (max 10) │         │          │         │ tokens / supply  │
+  └──────────┘         └──────────┘         └──────────────────┘
+```
 
-If any other transaction is attempted, the smart contract will invalidate the littercoin.
+Any transfer that violates these rules is rejected by the contract.
 
-This way, Littercoin becomes an exchangeless non-tradable climate currency.
+## Architecture
 
-In-line with its zero-waste values Littercoin does not have a logo, as there is too much visual litter stimulus 
-out there already. It's just Littercoin.
-There is no ICO.
-No pre-mine.
-No exchanges.
-The only thing you can do with Littercoin is spend it with a merchant who is not part of the global plastic crisis.
-
-The final challenge is getting crypto into the smart contract to give littercoin value.
-
-By sending crypto to the Smart Contract, users are rewarded with OLMRewardTokens. For every $1 worth of crypto, users
-receive 1 OLMRewardToken. These do not have any purpose or value yet other than to give people a receipt and thanks
-for their support. Stay tuned to see what's next!
-
-## How the System Works
-
-### Smart Contract Architecture
+### Contract Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -72,28 +53,16 @@ for their support. Stay tuned to see what's next!
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Littercoin Token Lifecycle (3 Transactions)
+### Contracts
 
-Each Littercoin NFT has exactly 3 transactions in its lifetime:
+| Contract | Type | Purpose |
+|---|---|---|
+| **Littercoin** | ERC-721 (Enumerable) | Main token. Mint via EIP-712, transfer to merchants, burn for ETH. Holds the ETH pool and deploys child contracts. |
+| **MerchantToken** | ERC-721 (Soulbound) | Non-transferable. Minted by admin with an expiration timestamp. One per address. Gates who can receive and redeem Littercoin. |
+| **OLMRewardToken** | ERC-20 | Minted when ETH is sent to the Littercoin contract. 1 OLMRT per $1 USD of ETH donated (via Chainlink price feed). |
+| **MockV3Aggregator** | — | Test mock for Chainlink's AggregatorV3Interface (ETH/USD). |
 
-```
-  ┌──────────┐         ┌──────────┐         ┌──────────────────┐
-  │  1. MINT │         │2.TRANSFER│         │     3. BURN      │
-  │          │         │          │         │                  │
-  │ Backend  │         │ User     │         │ Merchant sends   │
-  │ signs    ├────────►│ sends to ├────────►│ to contract,     │
-  │ EIP-712, │         │ merchant │         │ receives ETH     │
-  │ user     │         │          │         │                  │
-  │ claims   │         │          │         │ ETH = pool *     │
-  │          │         │          │         │ tokens / supply  │
-  └──────────┘         └──────────┘         └──────────────────┘
-       │                    │                        │
-  100 photos on        Only to valid            Proportional
-  OpenLitterMap        merchant token           share of ETH
-  = 1 Littercoin       holders                  pool
-```
-
-### ETH Pool and Value Flow
+### ETH Pool and Value
 
 ```
                     ┌──────────────────────┐
@@ -109,18 +78,9 @@ Each Littercoin NFT has exactly 3 transactions in its lifetime:
                     │  $X / N              │──────► ETH payout
                     │                      │
                     └──────────────────────┘
-
-  Example:
-  ┌─────────────────────────────────────────────────────────┐
-  │  Pool: 10 ETH ($20,000)    Supply: 100 Littercoin      │
-  │  Each Littercoin = $200                                 │
-  │                                                         │
-  │  Merchant burns 5 tokens → receives 0.5 ETH ($1,000)   │
-  │  Remaining: 9.5 ETH, 95 tokens → still $200 each       │
-  └─────────────────────────────────────────────────────────┘
 ```
 
-### Merchant Token System
+### Merchant Token Lifecycle
 
 ```
   ┌──────────┐     ┌───────────────┐     ┌─────────────────┐
@@ -129,47 +89,60 @@ Each Littercoin NFT has exactly 3 transactions in its lifetime:
   │          │     │               │     │ - Can receive   │
   │ Approves ├────►│ Mint with     ├────►│   Littercoin    │
   │ merchant │     │ expiry date   │     │ - Can burn for  │
-  │          │     │ (12 months)   │     │   ETH           │
-  │ Can also │     │               │     │ - Cannot mint   │
-  │ renew or │     │ Non-          │     │   Littercoin    │
-  │ revoke   │     │ transferable  │     │ - Cannot trade  │
+  │          │     │               │     │   ETH           │
+  │ Can also │     │ Non-          │     │ - Cannot mint   │
+  │ renew or │     │ transferable  │     │   Littercoin    │
+  │ invalidate│    │               │     │ - Cannot trade  │
   └──────────┘     └───────────────┘     └─────────────────┘
 
-  Merchant Token States:
-  ┌─────────┐  mint   ┌────────┐  time   ┌─────────┐
-  │  None   ├────────►│ Active ├────────►│ Expired │
-  └─────────┘         └───┬────┘         └────┬────┘
-                          │ revoke            │
-                          ▼                   │ renew
-                     ┌─────────┐              │
-                     │ Revoked │◄─────────────┘
-                     └─────────┘       (admin adds time)
+  States:
+  ┌────────┐  mint   ┌────────┐  time passes  ┌─────────┐
+  │  None  ├────────►│ Active ├──────────────►│ Expired │
+  └────────┘         └───┬────┘               └─────────┘
+                         │ invalidate              │
+                         ▼                         │ addExpirationTime
+                    ┌─────────┐                    │
+                    │ Expired │◄───────────────────┘
+                    └─────────┘
 ```
 
-### Role-Based Permissions
+### Roles
 
+| Role | Can Do | Cannot Do |
+|---|---|---|
+| **User** | Mint Littercoin (with backend signature), transfer to merchants, send ETH to contract | Burn Littercoin, mint if holding a Merchant Token |
+| **Merchant** | Receive Littercoin from users, burn Littercoin for proportional ETH | Mint Littercoin, transfer Littercoin to others |
+| **Admin** | Mint/invalidate/renew Merchant Tokens, sign EIP-712 mint authorizations, pause/unpause contracts | — |
+
+## Development
+
+### Prerequisites
+
+- Node.js
+- npm
+
+### Setup
+
+```bash
+npm install
 ```
-  ┌───────────────────────────────────────────────────────┐
-  │                    USERS                              │
-  │  - Mint Littercoin (with backend signature)           │
-  │  - Transfer Littercoin to merchants                   │
-  │  - Send ETH to contract (receive OLMRewardTokens)     │
-  │  - CANNOT burn Littercoin                             │
-  │  - CANNOT hold a Merchant Token and mint Littercoin   │
-  └───────────────────────────────────────────────────────┘
 
-  ┌───────────────────────────────────────────────────────┐
-  │                   MERCHANTS                           │
-  │  - Receive Littercoin from users                      │
-  │  - Burn Littercoin for proportional ETH               │
-  │  - CANNOT mint Littercoin                             │
-  │  - CANNOT transfer Littercoin to others               │
-  └───────────────────────────────────────────────────────┘
+### Build and Test
 
-  ┌───────────────────────────────────────────────────────┐
-  │                    ADMIN                              │
-  │  - Mint/revoke/renew Merchant Tokens                  │
-  │  - Sign EIP-712 mint authorizations                   │
-  │  - Pause/unpause contracts                            │
-  └───────────────────────────────────────────────────────┘
+```bash
+npx hardhat compile          # Compile contracts
+npx hardhat test             # Run all tests
+npx hardhat test --grep "should mint Littercoin"  # Run a single test
 ```
+
+### Tech Stack
+
+- **Solidity** 0.8.27
+- **Hardhat** with hardhat-toolbox
+- **OpenZeppelin** Contracts v4.9.2
+- **Chainlink** price feed (ETH/USD)
+- **Tests**: JavaScript (Mocha/Chai) with ethers.js v6
+
+## License
+
+MIT

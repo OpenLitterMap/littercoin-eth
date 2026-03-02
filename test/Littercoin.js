@@ -254,19 +254,17 @@ describe("Littercoin Smart Contract", function () {
         await littercoin.connect(user2).burnLittercoin([1]);
     });
 
-    it("should not allow receiving ETH when the contract is paused", async function () {
+    it("should accept plain ETH via receive() even when paused (pool growth)", async function () {
         // Pause the contract
         await littercoin.connect(owner).pause();
 
-        // Attempt to send ETH to the contract
-        await expect(user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") }))
-            .to.be.revertedWithCustomError(littercoin, "EnforcedPause");
-
-        // Unpause the contract
-        await littercoin.connect(owner).unpause();
-
-        // Now sending ETH should work
+        // Plain ETH transfers still work — receive() has no modifiers
         await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
+
+        const balance = await ethers.provider.getBalance(littercoin.getAddress());
+        expect(balance).to.equal(ethers.parseEther("1"));
+
+        await littercoin.connect(owner).unpause();
     });
 
     it("should not allow non-owner to pause or unpause the contract", async function () {
@@ -390,17 +388,52 @@ describe("Littercoin Smart Contract", function () {
             .to.be.revertedWith("Must hold a Merchant Token.");
     });
 
-    it("should reward OLMThankYouToken correctly upon receiving ETH", async function () {
-        // Send 1 ETH from user1 to the Littercoin contract
+    it("should reward OLMThankYouToken correctly when calling donate()", async function () {
+        // Call donate() with 1 ETH
         // We assume that 1 eth = $2000 for testing
+        await littercoin.connect(user1).donate({ value: ethers.parseEther("1") });
+
+        // Check user1's OLMThankYouToken balance ($2000 eth => 2000 OLMThankYouTokens)
+        const rewardBalance = await rewardToken.balanceOf(user1.address);
+        expect(rewardBalance).to.equal(ethers.parseEther("2000"));
+    });
+
+    it("should accept plain ETH via receive() without minting OLMTY", async function () {
+        // Send ETH via plain transfer (triggers receive())
         await user1.sendTransaction({
             to: littercoin.getAddress(),
             value: ethers.parseEther("1"),
         });
 
-        // Check user1's OLMThankYouToken balance ($2000 eth => 2000 OLMThankYouTokens)
+        // Contract should have the ETH
+        const contractBalance = await ethers.provider.getBalance(littercoin.getAddress());
+        expect(contractBalance).to.equal(ethers.parseEther("1"));
+
+        // No OLMTY should be minted
         const rewardBalance = await rewardToken.balanceOf(user1.address);
-        expect(rewardBalance).to.equal(ethers.parseEther("2000"));
+        expect(rewardBalance).to.equal(0);
+    });
+
+    it("should revert donate() when contract is paused", async function () {
+        await littercoin.connect(owner).pause();
+
+        await expect(littercoin.connect(user1).donate({ value: ethers.parseEther("1") }))
+            .to.be.revertedWithCustomError(littercoin, "EnforcedPause");
+
+        await littercoin.connect(owner).unpause();
+    });
+
+    it("should revert donate() with zero ETH", async function () {
+        await expect(littercoin.connect(user1).donate({ value: 0 }))
+            .to.be.revertedWith("No ETH sent");
+    });
+
+    it("should emit Reward event from donate()", async function () {
+        const expectedReward = ethers.parseEther("2000"); // 1 ETH * $2000
+
+        await expect(littercoin.connect(user1).donate({ value: ethers.parseEther("1") }))
+            .to.emit(littercoin, "Reward")
+            .withArgs(user1.address, expectedReward);
     });
 
     it("should revert redeeming Littercoin if contract has insufficient ETH", async function () {

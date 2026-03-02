@@ -189,9 +189,18 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         emit TaxWithdrawn(owner(), amount);
     }
 
-    /// @notice Accepts ETH and rewards OLMThankYouTokens based on the amount
-    receive () external payable nonReentrant whenNotPaused {
-        uint256 ethAmount = msg.value;
+    /// @notice Donate ETH and receive OLMThankYouTokens based on USD value
+    function donate () external payable nonReentrant whenNotPaused {
+        _processDonation(msg.sender, msg.value);
+    }
+
+    /// @notice Accept plain ETH transfers — no reward tokens, just pool growth.
+    ///         Donors who want OLMTY should call donate() directly.
+    receive () external payable {}
+
+    /// @dev Shared logic for processing a donation and minting reward tokens
+    function _processDonation (address donor, uint256 ethAmount) internal {
+        require(ethAmount > 0, "No ETH sent");
 
         // Get the latest ETH/USD price
         (, int256 price, , uint256 updatedAt, ) = priceFeed.latestRoundData();
@@ -199,21 +208,16 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         require(priceFeed.decimals() == 8, "Unexpected price feed decimals");
         require(block.timestamp - updatedAt < 3600, "Stale price feed");
 
-        // Convert price to uint256 and get reward amount
-        // Assuming the price feed has 8 decimals
-        // Convert price to uint256 and get ethPriceUsd (the price of 1 ETH in USD)
         uint256 ethPriceUsd = uint256(price);
 
-        // Calculate the number of reward tokens to mint
-        // ethPriceUsd has 8 decimals, so divide by 10^8 to get the actual USD value
-        // ethAmount is in wei (10^18), so divide by 10^18 to convert to ETH
         // rewardAmount = ethAmount (in USD) * (1 OLMThankYouToken / 1 USD)
+        // ethPriceUsd has 8 decimals, ethAmount is in wei (18 decimals)
         uint256 rewardAmount = (ethAmount * ethPriceUsd) / 1e8;
 
-        // Mint OLM Thank You Tokens to the sender
-        rewardToken.mint(msg.sender, rewardAmount);
+        // Mint OLM Thank You Tokens to the donor
+        rewardToken.mint(donor, rewardAmount);
 
-        emit Reward(msg.sender, rewardAmount);
+        emit Reward(donor, rewardAmount);
     }
 
     // @notice Get the current token ID

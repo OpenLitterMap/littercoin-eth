@@ -141,6 +141,9 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     }
 
     /// @notice Burn multiple Littercoin NFTs and transfer the average ETH per NFT to the merchant
+    /// @dev Uses hasMerchantToken (ignores expiry) intentionally. Merchants who received
+    ///      Littercoin through legitimate trade can always redeem them. Expiry only prevents
+    ///      receiving NEW Littercoin. The admin can still emergency-pause the contract if needed.
     /// @param tokenIds The IDs of the Littercoin NFTs to redeem
     function burnLittercoin (uint256[] calldata tokenIds) external nonReentrant whenNotPaused {
         require(merchantToken.hasMerchantToken(msg.sender), "Must hold a Merchant Token.");
@@ -274,8 +277,8 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
             // Prevent merchants from minting tokens
             require(!merchantToken.hasValidMerchantToken(to), "Merchants cannot mint Littercoin");
         } else if (to == address(0)) {
-            // Burning
-            // Only allow merchants to burn tokens
+            // Burning — uses hasMerchantToken (ignores expiry) intentionally.
+            // Merchants who received Littercoin through legitimate trade can always redeem.
             require(merchantToken.hasMerchantToken(from), "Only merchants can burn tokens");
         } else {
             // Transferring

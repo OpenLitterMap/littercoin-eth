@@ -19,26 +19,27 @@ Littercoin is an exchangeless, non-tradable climate currency. Users earn Litterc
 ### Contracts
 
 **Littercoin.sol** — Main ERC721 (NFT) contract. Each Littercoin is a unique NFT with a constrained lifecycle:
-- **Mint**: Users mint via EIP-712 signed messages from the backend (owner signs, user submits). Merchants cannot mint.
+- **Mint**: Users mint via EIP-712 signed messages from the backend (owner signs, user submits). Per-user nonces prevent replay. Merchants cannot mint.
 - **Transfer**: Users can transfer a token exactly once, and only to a valid merchant. `tokenTransferred[tokenId]` tracks this.
-- **Burn**: Merchants call `burnLittercoin(tokenIds)` to redeem proportional ETH from the contract pool (`contractBalance * numTokens / totalSupply`).
-- **receive()**: Accepts ETH donations and mints OLMRewardTokens proportional to USD value (via Chainlink price feed).
+- **Burn**: Merchants call `burnLittercoin(tokenIds)` to redeem proportional ETH from the redeemable pool (excludes accumulated tax). A 4.20% burn tax is tried first as a direct transfer to owner; on failure it accumulates for pull-based withdrawal via `withdrawTax()`. Max 50 tokens per burn.
+- **donate()**: Accepts ETH donations and mints OLMThankYouTokens proportional to USD value (via Chainlink price feed). Has `nonReentrant` and `whenNotPaused`.
+- **receive()**: Accepts plain ETH into the pool silently (no reward tokens). Donors who want OLMTY should call `donate()`.
 
-All transfer rules are enforced in `_beforeTokenTransfer`. Inherits ERC721Enumerable, Ownable, ReentrancyGuard, Pausable, EIP712.
+All transfer rules are enforced in the `_update` hook (OZ v5). Inherits ERC721Enumerable, Ownable, ReentrancyGuard, Pausable, EIP712.
 
-**MerchantToken.sol** — Soulbound ERC721 (transfers disabled via `_beforeTokenTransfer`). Owner-minted with an expiration timestamp. One token per address. Used as a gatekeeper: `hasValidMerchantToken(address)` checks existence + expiry.
+**MerchantToken.sol** — Soulbound ERC721 (transfers and approvals disabled via `_update` and `approve`/`setApprovalForAll` overrides). Owner-minted with an expiration timestamp after merchant pays a $20 USD fee (with overpayment refund). One token per address. Used as a gatekeeper: `hasValidMerchantToken(address)` checks existence + expiry.
 
-**OLMRewardToken.sol** — Simple ERC20 minted by the Littercoin contract when ETH is received. Owned by the Littercoin contract.
+**OLMThankYouToken.sol** — Simple ERC20 minted by the Littercoin contract when ETH is donated via `donate()`. Owned by the Littercoin contract.
 
 **MockV3Aggregator.sol** — Test mock for Chainlink's AggregatorV3Interface (ETH/USD price feed).
 
 ### Deployment Topology
 
-The Littercoin constructor deploys both OLMRewardToken and MerchantToken:
-- `rewardToken.transferOwnership(address(this))` — Littercoin contract owns it (needs to call `mint`)
-- `merchantToken.transferOwnership(msg.sender)` — deployer/admin owns it (manages merchant approvals)
+The Littercoin constructor deploys both OLMThankYouToken and MerchantToken:
+- `OLMThankYouToken(address(this))` — Littercoin contract is set as owner (needs to call `mint`)
+- `MerchantToken(msg.sender, _priceFeed)` — deployer/admin is set as owner (manages merchant approvals)
 
 ### Key Dependencies
 
-- OpenZeppelin Contracts v4.9.2 (uses `Counters`, `ReentrancyGuard`, `Pausable`, `EIP712`, `ECDSA`)
-- Chainlink contracts for price feed interface
+- OpenZeppelin Contracts v5 (uses `ReentrancyGuard`, `Pausable`, `EIP712`, `ECDSA`, `Ownable`)
+- Chainlink contracts for price feed interface (`AggregatorV3Interface`)

@@ -891,6 +891,71 @@ describe("Littercoin Smart Contract", function () {
     });
 
     /**
+     * Burn Batch Limit Tests
+     */
+
+    it("should allow burning up to MAX_BURN_AMOUNT (50) tokens", async function () {
+        // Send 100 ETH to the contract
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("100") });
+
+        // Mint 50 Littercoin in batches of 10 for user1
+        for (let batch = 0; batch < 5; batch++) {
+            const nonce = 100 + batch;
+            const amount = 10;
+            const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+            const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
+            await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+        }
+
+        expect(await littercoin.balanceOf(user1.address)).to.equal(50);
+
+        // Setup merchant for user2
+        await setupMerchant(user2, merchantTokenExpiry);
+
+        // Transfer all 50 tokens to merchant
+        for (let i = 1; i <= 50; i++) {
+            await littercoin.connect(user1).transferFrom(user1.address, user2.address, i);
+        }
+
+        // Burn all 50 at once — should succeed
+        const tokenIds = Array.from({ length: 50 }, (_, i) => i + 1);
+        await littercoin.connect(user2).burnLittercoin(tokenIds, { gasLimit: 5000000 });
+
+        expect(await littercoin.balanceOf(user2.address)).to.equal(0);
+    });
+
+    it("should revert when burning more than MAX_BURN_AMOUNT tokens", async function () {
+        // Mint 51 Littercoin in batches of 10 + one batch of 1 for user1
+        for (let batch = 0; batch < 5; batch++) {
+            const nonce = 200 + batch;
+            const amount = 10;
+            const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+            const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
+            await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+        }
+        {
+            const nonce = 205;
+            const amount = 1;
+            const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+            const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
+            await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+        }
+
+        // Setup merchant
+        await setupMerchant(user2, merchantTokenExpiry);
+
+        // Transfer all 51 to merchant
+        for (let i = 1; i <= 51; i++) {
+            await littercoin.connect(user1).transferFrom(user1.address, user2.address, i);
+        }
+
+        // Try to burn 51 — should revert
+        const tokenIds = Array.from({ length: 51 }, (_, i) => i + 1);
+        await expect(littercoin.connect(user2).burnLittercoin(tokenIds, { gasLimit: 5000000 }))
+            .to.be.revertedWith("Too many tokens in one burn");
+    });
+
+    /**
      * Merchant Fee Tests
      */
 

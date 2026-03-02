@@ -30,6 +30,9 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     // Define a limit for the number of Littercoin tokens that can be minted at once
     uint256 public constant MAX_MINT_AMOUNT = 10;
 
+    // Define a limit for the number of Littercoin tokens that can be burned at once
+    uint256 public constant MAX_BURN_AMOUNT = 50;
+
     // Burn tax: 4.20% (420 basis points out of 10000)
     uint256 public constant BURN_TAX_BPS = 420;
     uint256 public constant BPS_DENOMINATOR = 10000;
@@ -142,6 +145,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         // Check for Littercoin to burn
         uint256 numTokens = tokenIds.length;
         require(numTokens > 0, "No tokens provided.");
+        require(numTokens <= MAX_BURN_AMOUNT, "Too many tokens in one burn");
 
         uint256 currentSupply = totalSupply();
         require(currentSupply > 0, "No tokens in circulation.");

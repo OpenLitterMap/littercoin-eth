@@ -134,7 +134,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
             uint256 tokenId = _nextTokenId;
 
             // Mint tokens to the user
-            _safeMint(msg.sender, tokenId);
+            _mint(msg.sender, tokenId);
         }
 
         emit Mint(msg.sender, amount);

@@ -1051,6 +1051,56 @@ describe("Littercoin Smart Contract", function () {
     });
 
     /**
+     * Per-User Nonce Tests
+     */
+
+    it("should allow same nonce value for two different users", async function () {
+        const nonce = 999;
+        const amount = 1;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+
+        // Sign for user1
+        const sig1 = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, sig1);
+
+        // Sign for user2 with same nonce — should succeed
+        const sig2 = await getMintSignature(owner, littercoinAddress, user2.address, amount, nonce, expiry);
+        await littercoin.connect(user2).mint(amount, nonce, expiry, sig2);
+
+        expect(await littercoin.balanceOf(user1.address)).to.equal(1);
+        expect(await littercoin.balanceOf(user2.address)).to.equal(1);
+    });
+
+    it("should revert when same user replays same nonce", async function () {
+        const nonce = 998;
+        const amount = 1;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+
+        const sig = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, sig);
+
+        // Same user, same nonce — should revert
+        await expect(littercoin.connect(user1).mint(amount, nonce, expiry, sig))
+            .to.be.revertedWith("Nonce already used");
+    });
+
+    it("should work with per-user nonces in normal mint flow", async function () {
+        // User1 mints with nonce 1
+        const nonce1 = 1;
+        const amount = 5;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+        const sig1 = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce1, expiry);
+        await littercoin.connect(user1).mint(amount, nonce1, expiry, sig1);
+
+        // User1 mints with nonce 2
+        const nonce2 = 2;
+        const sig2 = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce2, expiry);
+        await littercoin.connect(user1).mint(amount, nonce2, expiry, sig2);
+
+        expect(await littercoin.balanceOf(user1.address)).to.equal(10);
+    });
+
+    /**
      * Price Feed Update Tests
      */
 

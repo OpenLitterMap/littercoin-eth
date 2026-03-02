@@ -21,8 +21,8 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     // ID of the next Littercoin to be minted
     uint256 private _nextTokenId;
 
-    // Used nonces for preventing replay attacks
-    mapping(uint256 => bool) public usedNonces;
+    // Per-user nonces for preventing replay attacks
+    mapping(address => mapping(uint256 => bool)) public usedNonces;
 
     // Mapping to check if each Littercoin has been transferred from a User to a Merchant
     mapping(uint256 => bool) public tokenTransferred;
@@ -118,10 +118,10 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     function mint (uint256 amount, uint256 nonce, uint256 expiry, bytes memory signature) external whenNotPaused {
         require(amount > 0 && amount <= MAX_MINT_AMOUNT, "Amount must be between 1 and 10");
         require(block.timestamp <= expiry, "Signature has expired");
-        require(!usedNonces[nonce], "Nonce already used");
+        require(!usedNonces[msg.sender][nonce], "Nonce already used");
 
         // Update nonce as used
-        usedNonces[nonce] = true;
+        usedNonces[msg.sender][nonce] = true;
 
         // Construct the EIP-712 hash to be signed by the backend
         bytes32 digest = _hashMint(msg.sender, amount, nonce, expiry);

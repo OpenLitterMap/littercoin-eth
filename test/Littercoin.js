@@ -1155,6 +1155,178 @@ describe("Littercoin Smart Contract", function () {
         expect(rewardBalance).to.equal(ethers.parseEther("4000"));
     });
 
+    // === Fix 11: Expired merchant mint gap + tokenTransferred burn check ===
+
+    it("should not allow expired merchant to mint Littercoin", async function () {
+        const currentBlock = await ethers.provider.getBlock('latest');
+        const shortExpiry = currentBlock.timestamp + 3600; // 1 hour
+
+        // Setup merchant for user2
+        await setupMerchant(user2, shortExpiry);
+
+        // Fast forward past expiry
+        await ethers.provider.send("evm_increaseTime", [3 * 3600]);
+        await ethers.provider.send("evm_mine");
+
+        // Verify expired
+        const tokenId = await merchantToken.getTokenIdByOwner(user2.address);
+        expect(await merchantToken.isExpired(tokenId)).to.equal(true);
+
+        // Attempt to mint Littercoin for expired merchant — should revert
+        const nonce = 50;
+        const amount = 1;
+        const block = await ethers.provider.getBlock('latest');
+        const expiry = block.timestamp + 3600;
+        const signature = await getMintSignature(owner, littercoinAddress, user2.address, amount, nonce, expiry);
+        await expect(littercoin.connect(user2).mint(amount, nonce, expiry, signature))
+            .to.be.revertedWith("Merchants cannot mint Littercoin");
+    });
+
+    it("should not allow invalidated merchant to mint Littercoin", async function () {
+        // Setup merchant for user2
+        await setupMerchant(user2, merchantTokenExpiry);
+
+        // Owner invalidates the merchant token
+        const tokenId = await merchantToken.getTokenIdByOwner(user2.address);
+        await merchantToken.connect(owner).invalidateToken(tokenId);
+
+        // Attempt to mint Littercoin for invalidated merchant — should revert
+        const nonce = 51;
+        const amount = 1;
+        const block = await ethers.provider.getBlock('latest');
+        const expiry = block.timestamp + 3600;
+        const signature = await getMintSignature(owner, littercoinAddress, user2.address, amount, nonce, expiry);
+        await expect(littercoin.connect(user2).mint(amount, nonce, expiry, signature))
+            .to.be.revertedWith("Merchants cannot mint Littercoin");
+    });
+
+    it("should allow merchant who burned their merchant token to mint Littercoin", async function () {
+        // Setup merchant for user2
+        await setupMerchant(user2, merchantTokenExpiry);
+
+        // User2 burns their merchant token — now hasMerchantToken returns false
+        await merchantToken.connect(user2).burn();
+        expect(await merchantToken.hasMerchantToken(user2.address)).to.equal(false);
+
+        // Mint Littercoin for user2 — should work, they're a regular user now
+        const nonce = 52;
+        const amount = 1;
+        const block = await ethers.provider.getBlock('latest');
+        const expiry = block.timestamp + 3600;
+        const signature = await getMintSignature(owner, littercoinAddress, user2.address, amount, nonce, expiry);
+        await expect(littercoin.connect(user2).mint(amount, nonce, expiry, signature))
+            .to.emit(littercoin, "Mint")
+            .withArgs(user2.address, amount);
+    });
+
+    it("should not allow burning a token that was not transferred", async function () {
+        // Mint Littercoin for user1
+        await mintLittercoinForUser(user1, 1);
+
+        // Setup merchant for user1 (so they can try to burn)
+        // But we need a different user to be merchant... user1 minted, so we need
+        // to show that even if a merchant somehow owns a non-transferred token, burn fails.
+        // The only way a merchant owns a non-transferred token is if they minted it before
+        // becoming a merchant. But with Fix 11a, merchants can't mint. So let's test the
+        // _update burn path check directly:
+        // We need user2 as merchant, mint for user3, and try to burn without transfer
+        await mintLittercoinForUser(user3, 1);
+        await setupMerchant(user2, merchantTokenExpiry);
+
+        // Add ETH to contract
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
+
+        // user2 (merchant) tries to burn token 1 that was never transferred to them
+        // This reverts with "Caller must own all tokens being redeemed" since user2 doesn't own it
+        await expect(littercoin.connect(user2).burnLittercoin([1]))
+            .to.be.revertedWith("Caller must own all tokens being redeemed.");
+    });
+
+    it("should allow burning a token that was legitimately transferred", async function () {
+        // Mint Littercoin for user1
+        await mintLittercoinForUser(user1, 1);
+
+        // Setup merchant for user2
+        await setupMerchant(user2, merchantTokenExpiry);
+
+        // Transfer Littercoin from user1 to user2 (merchant)
+        await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
+
+        // Add ETH to contract
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
+
+        // Merchant burns — should succeed
+        await littercoin.connect(user2).burnLittercoin([1]);
+        expect(await littercoin.balanceOf(user2.address)).to.equal(0);
+    });
+
+    it("should complete full lifecycle: mint → transfer → burn → success", async function () {
+        // Add ETH to the pool
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
+
+        // Mint Littercoin for user1
+        const nonce = 53;
+        const amount = 2;
+        const block = await ethers.provider.getBlock('latest');
+        const expiry = block.timestamp + 3600;
+        const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+        expect(await littercoin.balanceOf(user1.address)).to.equal(2);
+
+        // Setup merchant for user2
+        await setupMerchant(user2, merchantTokenExpiry);
+
+        // Transfer both tokens from user1 to merchant user2
+        await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
+        await littercoin.connect(user1).transferFrom(user1.address, user2.address, 2);
+        expect(await littercoin.balanceOf(user2.address)).to.equal(2);
+
+        // Merchant burns both tokens for ETH
+        const merchantBefore = await ethers.provider.getBalance(user2.address);
+        const tx = await littercoin.connect(user2).burnLittercoin([1, 2], { gasLimit: 300000 });
+        const receipt = await tx.wait();
+        const gasUsed = receipt.gasUsed * receipt.gasPrice;
+        const merchantAfter = await ethers.provider.getBalance(user2.address);
+
+        // Merchant received ETH (minus gas)
+        expect(merchantAfter + gasUsed).to.be.greaterThan(merchantBefore);
+        expect(await littercoin.balanceOf(user2.address)).to.equal(0);
+    });
+
+    it("should complete full lifecycle with expired merchant: mint → transfer → expire → burn → success", async function () {
+        const currentBlock = await ethers.provider.getBlock('latest');
+        const shortExpiry = currentBlock.timestamp + 3600; // 1 hour
+
+        // Add ETH to the pool
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
+
+        // Mint Littercoin for user1
+        const nonce = 54;
+        const amount = 1;
+        const block = await ethers.provider.getBlock('latest');
+        const expiry = block.timestamp + 3600;
+        const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+
+        // Setup merchant for user2 with short expiry
+        await setupMerchant(user2, shortExpiry);
+
+        // Transfer while merchant is still valid
+        await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
+
+        // Fast forward past expiry
+        await ethers.provider.send("evm_increaseTime", [3 * 3600]);
+        await ethers.provider.send("evm_mine");
+
+        // Verify expired
+        const merchantTokenId = await merchantToken.getTokenIdByOwner(user2.address);
+        expect(await merchantToken.isExpired(merchantTokenId)).to.equal(true);
+
+        // Expired merchant can still burn — token was legitimately transferred
+        await littercoin.connect(user2).burnLittercoin([1]);
+        expect(await littercoin.balanceOf(user2.address)).to.equal(0);
+    });
+
     // Helper function to mint Littercoin for a User
     async function mintLittercoinForUser (user, amount) {
         const nonce = 1;

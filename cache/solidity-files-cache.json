@@ -2,15 +2,15 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/seanlynch/Code/littercoin-eth/contracts/Littercoin.sol": {
-      "lastModificationDate": 1772388327585,
-      "contentHash": "55a661b297e10873a97f3540d3240c9e",
+      "lastModificationDate": 1772485986510,
+      "contentHash": "bb8afceb1b2fb6f92cc9ba2f07a4f45b",
       "sourceName": "contracts/Littercoin.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -33,7 +33,7 @@
         "@openzeppelin/contracts/token/ERC721/ERC721.sol",
         "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol",
         "@openzeppelin/contracts/access/Ownable.sol",
-        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol",
         "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
         "@openzeppelin/contracts/utils/Pausable.sol",
         "@openzeppelin/contracts/utils/cryptography/EIP712.sol",
@@ -42,22 +42,22 @@
         "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol"
       ],
       "versionPragmas": [
-        "^0.8.20"
+        "0.8.34"
       ],
       "artifacts": [
         "Littercoin"
       ]
     },
     "/Users/seanlynch/Code/littercoin-eth/contracts/MerchantToken.sol": {
-      "lastModificationDate": 1772388323281,
-      "contentHash": "149bdff19533a16043905ec4738ee0bf",
+      "lastModificationDate": 1772485987331,
+      "contentHash": "1870b8a13859ec865718d2c29408ab3a",
       "sourceName": "contracts/MerchantToken.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -83,22 +83,22 @@
         "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol"
       ],
       "versionPragmas": [
-        "^0.8.20"
+        "0.8.34"
       ],
       "artifacts": [
         "MerchantToken"
       ]
     },
     "/Users/seanlynch/Code/littercoin-eth/contracts/OLMThankYouToken.sol": {
-      "lastModificationDate": 1772388063744,
-      "contentHash": "f51bc0dbf1872a79038888006133b293",
+      "lastModificationDate": 1772485988131,
+      "contentHash": "74362de0da9fa3f105bf23794f6e0743",
       "sourceName": "contracts/OLMThankYouToken.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -122,7 +122,7 @@
         "@openzeppelin/contracts/access/Ownable.sol"
       ],
       "versionPragmas": [
-        "^0.8.20"
+        "0.8.34"
       ],
       "artifacts": [
         "OLMThankYouToken"
@@ -133,11 +133,11 @@
       "contentHash": "d3c790edc9ccf808a17c5a6cd13614fd",
       "sourceName": "@openzeppelin/contracts/access/Ownable.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -175,7 +175,7 @@
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -209,11 +209,11 @@
       "contentHash": "0d47b53e10b1985efbb396f937626279",
       "sourceName": "@openzeppelin/contracts/utils/Pausable.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -247,11 +247,11 @@
       "contentHash": "ad5144b924800b6f617bc84e4f1fb556",
       "sourceName": "@openzeppelin/contracts/token/ERC721/ERC721.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -291,11 +291,11 @@
       "contentHash": "b038f3665d2262af34fe6009e3cd78dd",
       "sourceName": "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -327,11 +327,11 @@
       "contentHash": "089160c9d34874a1186a9fc1c9ca6199",
       "sourceName": "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -367,11 +367,11 @@
       "contentHash": "1351802e3aa364e90aacf03f65b78176",
       "sourceName": "@openzeppelin/contracts/utils/cryptography/EIP712.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -407,11 +407,11 @@
       "contentHash": "64a3f906dc7696aa3c9fa8454b673be7",
       "sourceName": "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -443,11 +443,11 @@
       "contentHash": "67bfbc07588eb8683b3fd8f6f909563e",
       "sourceName": "@openzeppelin/contracts/utils/Context.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -479,11 +479,11 @@
       "contentHash": "d2fa243e766a193585b7e9bf36898d80",
       "sourceName": "@openzeppelin/contracts/utils/Strings.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -520,11 +520,11 @@
       "contentHash": "bcc76f4747d56c28c40ae272ef3470a6",
       "sourceName": "@openzeppelin/contracts/interfaces/draft-IERC6093.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -558,11 +558,11 @@
       "contentHash": "0906d06dca25210d4696dcef6dad2909",
       "sourceName": "@openzeppelin/contracts/utils/introspection/ERC165.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -596,11 +596,11 @@
       "contentHash": "136c64eca25bcb8a68f43ac6605559f9",
       "sourceName": "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -634,11 +634,11 @@
       "contentHash": "f62e11dbd302e17a5621a1438f4e054c",
       "sourceName": "@openzeppelin/contracts/token/ERC721/IERC721.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -672,11 +672,11 @@
       "contentHash": "eaad77accc6e32b20dfbbbe9813e1dce",
       "sourceName": "@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -711,11 +711,11 @@
       "contentHash": "5b8c6935ac52b7494df19d6feb38f5cc",
       "sourceName": "@openzeppelin/contracts/utils/math/Math.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -750,11 +750,11 @@
       "contentHash": "ae3528afb8bdb0a7dcfba5b115ee8074",
       "sourceName": "@openzeppelin/contracts/utils/math/SignedMath.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -788,11 +788,11 @@
       "contentHash": "3b32ea3a40a2d708f61e7161f081ca93",
       "sourceName": "@openzeppelin/contracts/utils/Bytes.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -826,11 +826,11 @@
       "contentHash": "f28a38cd37f4225d0a91fb5405dd850f",
       "sourceName": "@openzeppelin/contracts/utils/math/SafeCast.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -862,11 +862,11 @@
       "contentHash": "2133dc13536b4a6a98131e431fac59e1",
       "sourceName": "@openzeppelin/contracts/utils/Panic.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -898,11 +898,11 @@
       "contentHash": "7074c93b1ea0a122063f26ddd1db1032",
       "sourceName": "@openzeppelin/contracts/utils/introspection/IERC165.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -934,11 +934,11 @@
       "contentHash": "d61660a41ce200e99816e4734f7fd202",
       "sourceName": "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -970,11 +970,11 @@
       "contentHash": "d15c4d05583536e080f1960ab282772d",
       "sourceName": "@openzeppelin/contracts/token/ERC20/ERC20.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -1011,11 +1011,11 @@
       "contentHash": "9261adf6457863de3e9892f51317ec89",
       "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -1047,11 +1047,11 @@
       "contentHash": "513778b30d2750f5d2b9b19bbcf748a5",
       "sourceName": "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -1085,11 +1085,11 @@
       "contentHash": "e656d64c4ce918f3d13030b91c935134",
       "sourceName": "@openzeppelin/contracts/utils/StorageSlot.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -1121,11 +1121,11 @@
       "contentHash": "09d80d577d5abfc679455e7b67c5b537",
       "sourceName": "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -1159,11 +1159,11 @@
       "contentHash": "193937821a0ace7308133b4c68f6b9be",
       "sourceName": "@openzeppelin/contracts/utils/ShortStrings.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -1197,11 +1197,11 @@
       "contentHash": "6e00d2fe4bc0d5f1add753824498bb35",
       "sourceName": "@openzeppelin/contracts/interfaces/IERC5267.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -1233,11 +1233,11 @@
       "contentHash": "fab97298382d4c32182a66ec35255b71",
       "sourceName": "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -1267,15 +1267,15 @@
       ]
     },
     "/Users/seanlynch/Code/littercoin-eth/contracts/MockV3Aggregator.sol": {
-      "lastModificationDate": 1772388073578,
-      "contentHash": "116b68f88b07644127240a042fcfa260",
+      "lastModificationDate": 1772485988984,
+      "contentHash": "6b43ebf5b279e64a2522fbedb7a61bb8",
       "sourceName": "contracts/MockV3Aggregator.sol",
       "solcConfig": {
-        "version": "0.8.27",
+        "version": "0.8.34",
         "settings": {
           "evmVersion": "cancun",
           "optimizer": {
-            "enabled": false,
+            "enabled": true,
             "runs": 200
           },
           "outputSelection": {
@@ -1299,10 +1299,84 @@
         "@openzeppelin/contracts/access/Ownable.sol"
       ],
       "versionPragmas": [
-        "^0.8.20"
+        "0.8.34"
       ],
       "artifacts": [
         "MockV3Aggregator"
+      ]
+    },
+    "/Users/seanlynch/Code/littercoin-eth/node_modules/@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol": {
+      "lastModificationDate": 1772388028283,
+      "contentHash": "8996181725434f7febc382ab0945b8c5",
+      "sourceName": "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol",
+      "solcConfig": {
+        "version": "0.8.34",
+        "settings": {
+          "evmVersion": "cancun",
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./TransientSlot.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "ReentrancyGuardTransient"
+      ]
+    },
+    "/Users/seanlynch/Code/littercoin-eth/node_modules/@openzeppelin/contracts/utils/TransientSlot.sol": {
+      "lastModificationDate": 1772388028298,
+      "contentHash": "2157347f2a23ec91fd7e5af93a663340",
+      "sourceName": "@openzeppelin/contracts/utils/TransientSlot.sol",
+      "solcConfig": {
+        "version": "0.8.34",
+        "settings": {
+          "evmVersion": "cancun",
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "TransientSlot"
       ]
     }
   }

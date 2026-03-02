@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.34;
 
 // Import OpenZeppelin Contracts v5
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
@@ -16,7 +16,7 @@ import { OLMThankYouToken } from "./OLMThankYouToken.sol";
 
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausable, EIP712 {
+contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuardTransient, Pausable, EIP712 {
 
     // ID of the next Littercoin to be minted
     uint256 private _nextTokenId;
@@ -164,6 +164,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         for (uint256 i = 0; i < numTokens; i++) {
             uint256 tokenId = tokenIds[i];
             require(ownerOf(tokenId) == msg.sender, "Caller must own all tokens being redeemed.");
+            require(tokenTransferred[tokenId], "Token must be transferred before burn");
             _burn(tokenId);
         }
 
@@ -275,11 +276,12 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         if (from == address(0)) {
             // Minting
             // Prevent merchants from minting tokens
-            require(!merchantToken.hasValidMerchantToken(to), "Merchants cannot mint Littercoin");
+            require(!merchantToken.hasMerchantToken(to), "Merchants cannot mint Littercoin");
         } else if (to == address(0)) {
             // Burning — uses hasMerchantToken (ignores expiry) intentionally.
             // Merchants who received Littercoin through legitimate trade can always redeem.
             require(merchantToken.hasMerchantToken(from), "Only merchants can burn tokens");
+            require(tokenTransferred[tokenId], "Token must be transferred before burn");
         } else {
             // Transferring
             // Ensure the token hasn't been transferred before

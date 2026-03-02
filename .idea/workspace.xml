@@ -6,7 +6,67 @@
   <component name="ChangeListManager">
     <list default="true" id="c609d18c-b9d1-411f-b714-e0d595ec3402" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/access/Ownable.sol/Ownable.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/access/Ownable.sol/Ownable.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/interfaces/IERC5267.sol/IERC5267.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/interfaces/IERC5267.sol/IERC5267.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/interfaces/draft-IERC6093.sol/IERC1155Errors.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/interfaces/draft-IERC6093.sol/IERC1155Errors.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/interfaces/draft-IERC6093.sol/IERC20Errors.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/interfaces/draft-IERC6093.sol/IERC20Errors.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/interfaces/draft-IERC6093.sol/IERC721Errors.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/interfaces/draft-IERC6093.sol/IERC721Errors.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol/IERC20Metadata.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol/IERC20Metadata.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/ERC721.sol/ERC721.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/ERC721.sol/ERC721.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/IERC721.sol/IERC721.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/IERC721.sol/IERC721.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol/IERC721Receiver.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol/IERC721Receiver.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol/ERC721Enumerable.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol/ERC721Enumerable.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol/IERC721Enumerable.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol/IERC721Enumerable.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol/IERC721Metadata.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol/IERC721Metadata.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol/ERC721Utils.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol/ERC721Utils.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol/ERC721Utils.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol/ERC721Utils.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Bytes.sol/Bytes.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Bytes.sol/Bytes.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Bytes.sol/Bytes.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Bytes.sol/Bytes.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Context.sol/Context.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Context.sol/Context.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Panic.sol/Panic.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Panic.sol/Panic.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Panic.sol/Panic.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Panic.sol/Panic.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Pausable.sol/Pausable.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Pausable.sol/Pausable.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/ReentrancyGuard.sol/ReentrancyGuard.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/ReentrancyGuard.sol/ReentrancyGuard.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/ShortStrings.sol/ShortStrings.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/ShortStrings.sol/ShortStrings.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/ShortStrings.sol/ShortStrings.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/ShortStrings.sol/ShortStrings.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/StorageSlot.sol/StorageSlot.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/StorageSlot.sol/StorageSlot.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/StorageSlot.sol/StorageSlot.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/StorageSlot.sol/StorageSlot.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Strings.sol/Strings.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Strings.sol/Strings.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Strings.sol/Strings.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/Strings.sol/Strings.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/cryptography/ECDSA.sol/ECDSA.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/cryptography/ECDSA.sol/ECDSA.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/cryptography/ECDSA.sol/ECDSA.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/cryptography/ECDSA.sol/ECDSA.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/cryptography/EIP712.sol/EIP712.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/cryptography/EIP712.sol/EIP712.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol/MessageHashUtils.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol/MessageHashUtils.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol/MessageHashUtils.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol/MessageHashUtils.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/introspection/ERC165.sol/ERC165.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/introspection/ERC165.sol/ERC165.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/introspection/IERC165.sol/IERC165.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/introspection/IERC165.sol/IERC165.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/math/Math.sol/Math.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/math/Math.sol/Math.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/math/Math.sol/Math.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/math/Math.sol/Math.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/math/SafeCast.sol/SafeCast.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/math/SafeCast.sol/SafeCast.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/math/SafeCast.sol/SafeCast.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/math/SafeCast.sol/SafeCast.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/math/SignedMath.sol/SignedMath.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/math/SignedMath.sol/SignedMath.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/math/SignedMath.sol/SignedMath.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/@openzeppelin/contracts/utils/math/SignedMath.sol/SignedMath.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/build-info/75113c62db4f28f678372d28ad8e205e.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/build-info/dab73f8b1fcd209f6c5a8a5269982da0.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/contracts/Littercoin.sol/Littercoin.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/contracts/Littercoin.sol/Littercoin.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/contracts/Littercoin.sol/Littercoin.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/contracts/Littercoin.sol/Littercoin.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/contracts/MerchantToken.sol/MerchantToken.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/contracts/MerchantToken.sol/MerchantToken.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/contracts/MerchantToken.sol/MerchantToken.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/contracts/MerchantToken.sol/MerchantToken.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/contracts/MockV3Aggregator.sol/MockV3Aggregator.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/contracts/MockV3Aggregator.sol/MockV3Aggregator.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/contracts/MockV3Aggregator.sol/MockV3Aggregator.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/contracts/MockV3Aggregator.sol/MockV3Aggregator.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/contracts/OLMThankYouToken.sol/OLMThankYouToken.dbg.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/contracts/OLMThankYouToken.sol/OLMThankYouToken.dbg.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/contracts/OLMThankYouToken.sol/OLMThankYouToken.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/contracts/OLMThankYouToken.sol/OLMThankYouToken.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cache/solidity-files-cache.json" beforeDir="false" afterPath="$PROJECT_DIR$/cache/solidity-files-cache.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/contracts/Littercoin.sol" beforeDir="false" afterPath="$PROJECT_DIR$/contracts/Littercoin.sol" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/contracts/MerchantToken.sol" beforeDir="false" afterPath="$PROJECT_DIR$/contracts/MerchantToken.sol" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/contracts/MockV3Aggregator.sol" beforeDir="false" afterPath="$PROJECT_DIR$/contracts/MockV3Aggregator.sol" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/contracts/OLMThankYouToken.sol" beforeDir="false" afterPath="$PROJECT_DIR$/contracts/OLMThankYouToken.sol" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hardhat.config.cjs" beforeDir="false" afterPath="$PROJECT_DIR$/hardhat.config.cjs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/readme/security-audit-report.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/Littercoin.js" beforeDir="false" afterPath="$PROJECT_DIR$/test/Littercoin.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -71,7 +131,9 @@
       <updated>1772382630482</updated>
       <workItem from="1772382631522" duration="864000" />
       <workItem from="1772389175293" duration="84000" />
-      <workItem from="1772389268541" duration="732000" />
+      <workItem from="1772389268541" duration="826000" />
+      <workItem from="1772480550058" duration="1279000" />
+      <workItem from="1772484768856" duration="1301000" />
     </task>
     <servers />
   </component>

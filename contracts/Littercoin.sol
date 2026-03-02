@@ -73,11 +73,11 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     /// @notice Event emitted when a user is rewarded OLM Thank You Tokens
     event Reward (address indexed user, uint256 rewardAmount);
 
-    /// @notice Event emitted when burn tax is accumulated
-    event TaxAccumulated(uint256 taxAmount);
+    /// @notice Event emitted when burn tax is collected (sent to owner or withdrawn)
+    event BurnTaxCollected(address indexed owner, uint256 taxAmount);
 
-    /// @notice Event emitted when accumulated tax is withdrawn by owner
-    event TaxWithdrawn(address indexed owner, uint256 taxAmount);
+    /// @notice Event emitted when tax transfer fails and is accumulated instead
+    event TaxAccumulated(uint256 taxAmount);
 
     /// @notice Getter function for rewardToken address
     function getRewardTokenAddress() external view returns (address) {
@@ -161,14 +161,19 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         uint256 totalEthToTransfer = (redeemableBalance * numTokens) / currentSupply;
         require(totalEthToTransfer > 0, "ETH amount too small to redeem");
 
-        // Calculate the 4.20% burn tax — accumulate for pull-based withdrawal
+        // Calculate the 4.20% burn tax
         uint256 taxAmount = (totalEthToTransfer * BURN_TAX_BPS) / BPS_DENOMINATOR;
         uint256 merchantAmount = totalEthToTransfer - taxAmount;
 
-        // Accumulate tax for owner withdrawal (prevents revert if owner can't receive ETH)
+        // Try to send tax to owner; if it fails, accumulate for later withdrawal
         if (taxAmount > 0) {
-            accumulatedTax += taxAmount;
-            emit TaxAccumulated(taxAmount);
+            (bool taxSuccess, ) = payable(owner()).call{value: taxAmount}("");
+            if (taxSuccess) {
+                emit BurnTaxCollected(owner(), taxAmount);
+            } else {
+                accumulatedTax += taxAmount;
+                emit TaxAccumulated(taxAmount);
+            }
         }
 
         // Transfer remaining ETH to merchant
@@ -186,7 +191,7 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         accumulatedTax = 0;
         (bool success, ) = payable(owner()).call{value: amount}("");
         require(success, "Withdraw failed");
-        emit TaxWithdrawn(owner(), amount);
+        emit BurnTaxCollected(owner(), amount);
     }
 
     /// @notice Donate ETH and receive OLMThankYouTokens based on USD value

@@ -59,11 +59,18 @@ contract MerchantToken is ERC721, Ownable, Pausable {
 
         feePaid[msg.sender] = true;
 
-        // Send fee to owner
-        (bool success, ) = payable(owner()).call{value: msg.value}("");
+        // Send only the required fee to owner
+        (bool success, ) = payable(owner()).call{value: requiredEth}("");
         require(success, "Fee transfer failed");
 
-        emit MerchantFeeCollected(msg.sender, msg.value, MERCHANT_FEE_USD);
+        // Refund any excess ETH to sender
+        uint256 excess = msg.value - requiredEth;
+        if (excess > 0) {
+            (bool refundSuccess, ) = payable(msg.sender).call{value: excess}("");
+            require(refundSuccess, "Refund failed");
+        }
+
+        emit MerchantFeeCollected(msg.sender, requiredEth, MERCHANT_FEE_USD);
     }
 
     /// @notice Mints a new Merchant Token to a specified address (owner approves after fee is paid)

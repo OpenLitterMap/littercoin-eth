@@ -996,13 +996,40 @@ describe("Littercoin Smart Contract", function () {
             .withArgs(user2.address, merchantFeeEth, 20);
     });
 
-    it("should send merchant fee to owner", async function () {
+    it("should send only required fee to owner (exact payment)", async function () {
         const ownerBalanceBefore = await ethers.provider.getBalance(owner.address);
 
         await merchantToken.connect(user2).payMerchantFee({ value: merchantFeeEth });
 
         const ownerBalanceAfter = await ethers.provider.getBalance(owner.address);
         expect(ownerBalanceAfter - ownerBalanceBefore).to.equal(merchantFeeEth);
+    });
+
+    it("should refund excess ETH when overpaying merchant fee", async function () {
+        const overpayment = ethers.parseEther("0.02"); // 2x the required fee
+        const userBalanceBefore = await ethers.provider.getBalance(user2.address);
+        const ownerBalanceBefore = await ethers.provider.getBalance(owner.address);
+
+        const tx = await merchantToken.connect(user2).payMerchantFee({ value: overpayment });
+        const receipt = await tx.wait();
+        const gasUsed = receipt.gasUsed * receipt.gasPrice;
+
+        const userBalanceAfter = await ethers.provider.getBalance(user2.address);
+        const ownerBalanceAfter = await ethers.provider.getBalance(owner.address);
+
+        // Owner should receive only the required amount (0.01 ETH)
+        expect(ownerBalanceAfter - ownerBalanceBefore).to.equal(merchantFeeEth);
+
+        // User should only be charged requiredEth + gas (excess refunded)
+        const userSpent = userBalanceBefore - userBalanceAfter - gasUsed;
+        expect(userSpent).to.equal(merchantFeeEth);
+    });
+
+    it("should revert when merchant fee is insufficient", async function () {
+        const insufficientEth = ethers.parseEther("0.005"); // Only $10 worth
+
+        await expect(merchantToken.connect(user2).payMerchantFee({ value: insufficientEth }))
+            .to.be.revertedWith("Insufficient ETH for merchant fee");
     });
 
     /**

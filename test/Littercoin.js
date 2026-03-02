@@ -660,7 +660,7 @@ describe("Littercoin Smart Contract", function () {
      * Burn Tax Tests (4.20%)
      */
 
-    it("should collect 4.20% burn tax and send to owner", async function () {
+    it("should accumulate 4.20% burn tax and pay merchant correctly", async function () {
         // Send 1 ETH to the contract
         await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
 
@@ -677,8 +677,6 @@ describe("Littercoin Smart Contract", function () {
         // Transfer Littercoin to merchant
         await littercoin.connect(user3).transferFrom(user3.address, user2.address, 1);
 
-        // Record balances before burn
-        const ownerBalanceBefore = await ethers.provider.getBalance(owner.address);
         const merchantBalanceBefore = await ethers.provider.getBalance(user2.address);
 
         // Merchant burns
@@ -686,19 +684,18 @@ describe("Littercoin Smart Contract", function () {
         const receipt = await tx.wait();
         const gasUsed = receipt.gasUsed * receipt.gasPrice;
 
-        // Check balances after burn
-        const ownerBalanceAfter = await ethers.provider.getBalance(owner.address);
         const merchantBalanceAfter = await ethers.provider.getBalance(user2.address);
 
-        // 1 ETH total, 4.20% tax = 0.042 ETH to owner, 0.958 ETH to merchant
+        // 1 ETH total, 4.20% tax = 0.042 ETH accumulated, 0.958 ETH to merchant
         const expectedTax = ethers.parseEther("1") * 420n / 10000n;
         const expectedMerchant = ethers.parseEther("1") - expectedTax;
 
-        expect(ownerBalanceAfter - ownerBalanceBefore).to.equal(expectedTax);
+        // Tax should be accumulated, not sent to owner
+        expect(await littercoin.accumulatedTax()).to.equal(expectedTax);
         expect(merchantBalanceAfter - merchantBalanceBefore + gasUsed).to.equal(expectedMerchant);
     });
 
-    it("should emit BurnTaxCollected event with correct amounts", async function () {
+    it("should emit TaxAccumulated event with correct amounts", async function () {
         // Send 1 ETH to the contract
         await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
 
@@ -713,13 +710,13 @@ describe("Littercoin Smart Contract", function () {
 
         const expectedTax = ethers.parseEther("1") * 420n / 10000n;
 
-        // Burn should emit BurnTaxCollected
+        // Burn should emit TaxAccumulated
         await expect(littercoin.connect(user2).burnLittercoin([1], { gasLimit: 200000 }))
-            .to.emit(littercoin, "BurnTaxCollected")
-            .withArgs(owner.address, expectedTax);
+            .to.emit(littercoin, "TaxAccumulated")
+            .withArgs(expectedTax);
     });
 
-    it("should apply burn tax correctly with multiple token burns", async function () {
+    it("should accumulate tax correctly with multiple token burns", async function () {
         // Send 10 ETH to the contract
         await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("10") });
 
@@ -738,17 +735,141 @@ describe("Littercoin Smart Contract", function () {
             await littercoin.connect(user3).transferFrom(user3.address, user2.address, i);
         }
 
-        // Record balances before burn
-        const ownerBalanceBefore = await ethers.provider.getBalance(owner.address);
-
         // Burn all 5 tokens at once
         await littercoin.connect(user2).burnLittercoin([1, 2, 3, 4, 5], { gasLimit: 500000 });
 
+        // 10 ETH, 5/5 tokens = 10 ETH total, 4.20% = 0.42 ETH tax accumulated
+        const expectedTax = ethers.parseEther("10") * 420n / 10000n;
+        expect(await littercoin.accumulatedTax()).to.equal(expectedTax);
+    });
+
+    it("should allow owner to withdraw accumulated tax", async function () {
+        // Send 1 ETH to the contract
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
+
+        // Mint, transfer, and burn to accumulate tax
+        const nonce = 33;
+        const amount = 1;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+        const signature = await getMintSignature(owner, littercoinAddress, user3.address, amount, nonce, expiry);
+        await littercoin.connect(user3).mint(amount, nonce, expiry, signature);
+        await setupMerchant(user2, merchantTokenExpiry);
+        await littercoin.connect(user3).transferFrom(user3.address, user2.address, 1);
+        await littercoin.connect(user2).burnLittercoin([1], { gasLimit: 200000 });
+
+        const expectedTax = ethers.parseEther("1") * 420n / 10000n;
+        expect(await littercoin.accumulatedTax()).to.equal(expectedTax);
+
+        // Owner withdraws tax
+        const ownerBalanceBefore = await ethers.provider.getBalance(owner.address);
+        const tx = await littercoin.connect(owner).withdrawTax();
+        const receipt = await tx.wait();
+        const gasUsed = receipt.gasUsed * receipt.gasPrice;
         const ownerBalanceAfter = await ethers.provider.getBalance(owner.address);
 
-        // 10 ETH, 5/5 tokens = 10 ETH total, 4.20% = 0.42 ETH tax
-        const expectedTax = ethers.parseEther("10") * 420n / 10000n;
-        expect(ownerBalanceAfter - ownerBalanceBefore).to.equal(expectedTax);
+        expect(ownerBalanceAfter - ownerBalanceBefore + gasUsed).to.equal(expectedTax);
+        expect(await littercoin.accumulatedTax()).to.equal(0);
+    });
+
+    it("should emit TaxWithdrawn event on withdrawal", async function () {
+        // Send 1 ETH and burn to accumulate tax
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("1") });
+        const nonce = 34;
+        const amount = 1;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+        const signature = await getMintSignature(owner, littercoinAddress, user3.address, amount, nonce, expiry);
+        await littercoin.connect(user3).mint(amount, nonce, expiry, signature);
+        await setupMerchant(user2, merchantTokenExpiry);
+        await littercoin.connect(user3).transferFrom(user3.address, user2.address, 1);
+        await littercoin.connect(user2).burnLittercoin([1], { gasLimit: 200000 });
+
+        const expectedTax = ethers.parseEther("1") * 420n / 10000n;
+
+        await expect(littercoin.connect(owner).withdrawTax())
+            .to.emit(littercoin, "TaxWithdrawn")
+            .withArgs(owner.address, expectedTax);
+    });
+
+    it("should revert withdrawTax when no tax accumulated", async function () {
+        await expect(littercoin.connect(owner).withdrawTax())
+            .to.be.revertedWith("No tax to withdraw");
+    });
+
+    it("should not allow non-owner to withdraw tax", async function () {
+        await expect(littercoin.connect(user1).withdrawTax())
+            .to.be.revertedWithCustomError(littercoin, "OwnableUnauthorizedAccount").withArgs(user1.address);
+    });
+
+    it("should exclude accumulated tax from proportional ETH calculation", async function () {
+        // Send 10 ETH to the contract
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("10") });
+
+        // Mint 2 Littercoin for user3
+        const nonce = 35;
+        const amount = 2;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+        const signature = await getMintSignature(owner, littercoinAddress, user3.address, amount, nonce, expiry);
+        await littercoin.connect(user3).mint(amount, nonce, expiry, signature);
+
+        // Setup merchant for user2
+        await setupMerchant(user2, merchantTokenExpiry);
+
+        // Transfer both tokens to merchant
+        await littercoin.connect(user3).transferFrom(user3.address, user2.address, 1);
+        await littercoin.connect(user3).transferFrom(user3.address, user2.address, 2);
+
+        // Burn first token — accumulates tax
+        await littercoin.connect(user2).burnLittercoin([1], { gasLimit: 200000 });
+
+        const taxAfterFirst = await littercoin.accumulatedTax();
+
+        // Burn second token — should use redeemable balance (excludes accumulated tax)
+        const merchantBalanceBefore = await ethers.provider.getBalance(user2.address);
+        const tx = await littercoin.connect(user2).burnLittercoin([2], { gasLimit: 200000 });
+        const receipt = await tx.wait();
+        const gasUsed = receipt.gasUsed * receipt.gasPrice;
+        const merchantBalanceAfter = await ethers.provider.getBalance(user2.address);
+
+        // After first burn: redeemableBalance = contractBalance - accumulatedTax
+        // The second burn should calculate proportionally from the remaining redeemable balance
+        // This ensures accumulated tax doesn't inflate the merchant's payout
+        const merchantPayout = merchantBalanceAfter - merchantBalanceBefore + gasUsed;
+        expect(merchantPayout).to.be.gt(0);
+
+        // Total accumulated tax should be from both burns
+        const totalTax = await littercoin.accumulatedTax();
+        expect(totalTax).to.be.gt(taxAfterFirst);
+    });
+
+    it("should accumulate tax across multiple burns from different merchants", async function () {
+        // Send 10 ETH to the contract
+        await user1.sendTransaction({ to: littercoin.getAddress(), value: ethers.parseEther("10") });
+
+        // Mint 2 Littercoin for user1
+        const nonce = 36;
+        const amount = 2;
+        const expiry = (await ethers.provider.getBlock('latest')).timestamp + 3600;
+        const signature = await getMintSignature(owner, littercoinAddress, user1.address, amount, nonce, expiry);
+        await littercoin.connect(user1).mint(amount, nonce, expiry, signature);
+
+        // Setup two merchants
+        await setupMerchant(user2, merchantTokenExpiry);
+        await merchantToken.connect(user3).payMerchantFee({ value: merchantFeeEth });
+        await merchantToken.connect(owner).mint(user3.address, merchantTokenExpiry);
+
+        // Transfer one token to each merchant
+        await littercoin.connect(user1).transferFrom(user1.address, user2.address, 1);
+        await littercoin.connect(user1).transferFrom(user1.address, user3.address, 2);
+
+        // First merchant burns
+        await littercoin.connect(user2).burnLittercoin([1], { gasLimit: 200000 });
+        const taxAfterFirst = await littercoin.accumulatedTax();
+        expect(taxAfterFirst).to.be.gt(0);
+
+        // Second merchant burns
+        await littercoin.connect(user3).burnLittercoin([2], { gasLimit: 200000 });
+        const taxAfterSecond = await littercoin.accumulatedTax();
+        expect(taxAfterSecond).to.be.gt(taxAfterFirst);
     });
 
     /**

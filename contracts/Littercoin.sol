@@ -34,6 +34,9 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     uint256 public constant BURN_TAX_BPS = 420;
     uint256 public constant BPS_DENOMINATOR = 10000;
 
+    // Accumulated burn tax awaiting withdrawal by owner
+    uint256 public accumulatedTax;
+
     // OLM Thank You Token
     OLMThankYouToken public rewardToken;
 
@@ -70,8 +73,11 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     /// @notice Event emitted when a user is rewarded OLM Thank You Tokens
     event Reward (address indexed user, uint256 rewardAmount);
 
-    /// @notice Event emitted when burn tax is collected
-    event BurnTaxCollected(address indexed owner, uint256 taxAmount);
+    /// @notice Event emitted when burn tax is accumulated
+    event TaxAccumulated(uint256 taxAmount);
+
+    /// @notice Event emitted when accumulated tax is withdrawn by owner
+    event TaxWithdrawn(address indexed owner, uint256 taxAmount);
 
     /// @notice Getter function for rewardToken address
     function getRewardTokenAddress() external view returns (address) {
@@ -140,9 +146,9 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         uint256 currentSupply = totalSupply();
         require(currentSupply > 0, "No tokens in circulation.");
 
-        // Ensure there is more than 0 ETH in the contract
-        uint256 contractBalance = address(this).balance;
-        require(contractBalance > 0, "Not enough ETH in contract.");
+        // Redeemable balance excludes accumulated tax awaiting withdrawal
+        uint256 redeemableBalance = address(this).balance - accumulatedTax;
+        require(redeemableBalance > 0, "Not enough ETH in contract.");
 
         // Validate all and process each token
         for (uint256 i = 0; i < numTokens; i++) {
@@ -152,18 +158,17 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         }
 
         // Calculate the total ETH to redeem
-        uint256 totalEthToTransfer = (contractBalance * numTokens) / currentSupply;
+        uint256 totalEthToTransfer = (redeemableBalance * numTokens) / currentSupply;
         require(totalEthToTransfer > 0, "ETH amount too small to redeem");
 
-        // Calculate the 4.20% burn tax
+        // Calculate the 4.20% burn tax — accumulate for pull-based withdrawal
         uint256 taxAmount = (totalEthToTransfer * BURN_TAX_BPS) / BPS_DENOMINATOR;
         uint256 merchantAmount = totalEthToTransfer - taxAmount;
 
-        // Transfer tax to owner
+        // Accumulate tax for owner withdrawal (prevents revert if owner can't receive ETH)
         if (taxAmount > 0) {
-            (bool taxSuccess, ) = payable(owner()).call{value: taxAmount}("");
-            require(taxSuccess, "Tax transfer failed");
-            emit BurnTaxCollected(owner(), taxAmount);
+            accumulatedTax += taxAmount;
+            emit TaxAccumulated(taxAmount);
         }
 
         // Transfer remaining ETH to merchant
@@ -171,6 +176,17 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
         require(success, "Transfer failed");
 
         emit BurnLittercoin(msg.sender, numTokens, merchantAmount);
+    }
+
+    /// @notice Withdraw accumulated burn tax — pull-based pattern prevents
+    ///         burns from reverting if the owner can't receive ETH inline.
+    function withdrawTax () external onlyOwner nonReentrant {
+        uint256 amount = accumulatedTax;
+        require(amount > 0, "No tax to withdraw");
+        accumulatedTax = 0;
+        (bool success, ) = payable(owner()).call{value: amount}("");
+        require(success, "Withdraw failed");
+        emit TaxWithdrawn(owner(), amount);
     }
 
     /// @notice Accepts ETH and rewards OLMThankYouTokens based on the amount

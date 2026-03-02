@@ -1005,6 +1005,61 @@ describe("Littercoin Smart Contract", function () {
         expect(ownerBalanceAfter - ownerBalanceBefore).to.equal(merchantFeeEth);
     });
 
+    /**
+     * Price Feed Update Tests
+     */
+
+    it("should allow owner to update price feed on Littercoin", async function () {
+        // Deploy a new mock price feed
+        const MockV3Aggregator = await ethers.getContractFactory("MockV3Aggregator");
+        const newFeed = await MockV3Aggregator.deploy(8, ethers.parseUnits("3000", 8));
+        await newFeed.waitForDeployment();
+
+        await expect(littercoin.connect(owner).setPriceFeed(await newFeed.getAddress()))
+            .to.emit(littercoin, "PriceFeedUpdated");
+    });
+
+    it("should allow owner to update price feed on MerchantToken", async function () {
+        const MockV3Aggregator = await ethers.getContractFactory("MockV3Aggregator");
+        const newFeed = await MockV3Aggregator.deploy(8, ethers.parseUnits("3000", 8));
+        await newFeed.waitForDeployment();
+
+        await expect(merchantToken.connect(owner).setPriceFeed(await newFeed.getAddress()))
+            .to.emit(merchantToken, "PriceFeedUpdated");
+    });
+
+    it("should not allow non-owner to update price feed", async function () {
+        await expect(littercoin.connect(user1).setPriceFeed(user2.address))
+            .to.be.revertedWithCustomError(littercoin, "OwnableUnauthorizedAccount").withArgs(user1.address);
+
+        await expect(merchantToken.connect(user1).setPriceFeed(user2.address))
+            .to.be.revertedWithCustomError(merchantToken, "OwnableUnauthorizedAccount").withArgs(user1.address);
+    });
+
+    it("should reject zero address for price feed", async function () {
+        await expect(littercoin.connect(owner).setPriceFeed(ethers.ZeroAddress))
+            .to.be.revertedWith("Invalid address");
+
+        await expect(merchantToken.connect(owner).setPriceFeed(ethers.ZeroAddress))
+            .to.be.revertedWith("Invalid address");
+    });
+
+    it("should use new price feed after update", async function () {
+        // Deploy a new mock with a higher price ($4000)
+        const MockV3Aggregator = await ethers.getContractFactory("MockV3Aggregator");
+        const newFeed = await MockV3Aggregator.deploy(8, ethers.parseUnits("4000", 8));
+        await newFeed.waitForDeployment();
+
+        // Update price feed on Littercoin
+        await littercoin.connect(owner).setPriceFeed(await newFeed.getAddress());
+
+        // Donate 1 ETH — should get 4000 OLMTY (not 2000)
+        await littercoin.connect(user1).donate({ value: ethers.parseEther("1") });
+
+        const rewardBalance = await rewardToken.balanceOf(user1.address);
+        expect(rewardBalance).to.equal(ethers.parseEther("4000"));
+    });
+
     // Helper function to mint Littercoin for a User
     async function mintLittercoinForUser (user, amount) {
         const nonce = 1;

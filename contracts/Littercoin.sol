@@ -79,6 +79,9 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     /// @notice Event emitted when burn tax is collected (sent to owner or withdrawn)
     event BurnTaxCollected(address indexed owner, uint256 taxAmount);
 
+    /// @notice Event emitted when the price feed is updated
+    event PriceFeedUpdated(address indexed oldFeed, address indexed newFeed);
+
     /// @notice Event emitted when tax transfer fails and is accumulated instead
     event TaxAccumulated(uint256 taxAmount);
 
@@ -232,6 +235,14 @@ contract Littercoin is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard, Pausa
     // @notice Get the current token ID
     function getCurrentTokenId () external view returns (uint256) {
         return _nextTokenId;
+    }
+
+    /// @notice Update the Chainlink price feed address
+    function setPriceFeed (address _priceFeed) external onlyOwner {
+        require(_priceFeed != address(0), "Invalid address");
+        address oldFeed = address(priceFeed);
+        priceFeed = AggregatorV3Interface(_priceFeed);
+        emit PriceFeedUpdated(oldFeed, _priceFeed);
     }
 
     function pause () external onlyOwner {

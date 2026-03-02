@@ -34,6 +34,7 @@ contract MerchantToken is ERC721, Ownable, Pausable {
     event MerchantTokenExpired(uint256 tokenId);
     event MerchantTokenRenewed(uint256 tokenId, uint256 newExpirationTimestamp);
     event MerchantFeeCollected(address indexed merchant, uint256 ethAmount, uint256 usdValue);
+    event PriceFeedUpdated(address indexed oldFeed, address indexed newFeed);
 
     constructor(address initialOwner, address _priceFeed) ERC721("LittercoinMerchantToken", "LXMT") Ownable(initialOwner) {
         priceFeed = AggregatorV3Interface(_priceFeed);
@@ -173,6 +174,14 @@ contract MerchantToken is ERC721, Ownable, Pausable {
         require(tokenId != 0, "You do not own a token");
 
         _burn(tokenId);
+    }
+
+    /// @notice Update the Chainlink price feed address
+    function setPriceFeed (address _priceFeed) external onlyOwner {
+        require(_priceFeed != address(0), "Invalid address");
+        address oldFeed = address(priceFeed);
+        priceFeed = AggregatorV3Interface(_priceFeed);
+        emit PriceFeedUpdated(oldFeed, _priceFeed);
     }
 
     function pause () external onlyOwner {

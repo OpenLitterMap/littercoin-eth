@@ -199,6 +199,16 @@ contract MerchantToken is ERC721, Ownable, Pausable {
         _unpause();
     }
 
+    /// @dev Soulbound: approvals are disabled since transfers are not allowed
+    function approve(address, uint256) public pure override {
+        revert("Soulbound: approvals disabled");
+    }
+
+    /// @dev Soulbound: approvals are disabled since transfers are not allowed
+    function setApprovalForAll(address, bool) public pure override {
+        revert("Soulbound: approvals disabled");
+    }
+
     /// @dev Overrides the _update hook to prevent transfers (soulbound)
     function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
         address from = _ownerOf(tokenId);

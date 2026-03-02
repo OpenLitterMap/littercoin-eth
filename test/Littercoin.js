@@ -1033,6 +1033,24 @@ describe("Littercoin Smart Contract", function () {
     });
 
     /**
+     * Soulbound Approval Tests
+     */
+
+    it("should revert approve() on MerchantToken", async function () {
+        await setupMerchant(user1, merchantTokenExpiry);
+
+        await expect(merchantToken.connect(user1).approve(user2.address, 1))
+            .to.be.revertedWith("Soulbound: approvals disabled");
+    });
+
+    it("should revert setApprovalForAll() on MerchantToken", async function () {
+        await setupMerchant(user1, merchantTokenExpiry);
+
+        await expect(merchantToken.connect(user1).setApprovalForAll(user2.address, true))
+            .to.be.revertedWith("Soulbound: approvals disabled");
+    });
+
+    /**
      * Price Feed Update Tests
      */
 
